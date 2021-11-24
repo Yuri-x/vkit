@@ -1,0 +1,15 @@
+{
+    "include": [
+        "vkit",
+        "case",
+    ],
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+    ],
+    "stubPath": ".github/typings",
+    "pythonVersion": "3.8",
+    "pythonPlatform": "Linux",
+    "typeCheckingMode": "basic",
+    "extraPaths": [],
+}

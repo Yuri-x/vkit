@@ -1,0 +1,93 @@
+name: release-nightly
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release-nightly:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        image:
+          - "quay.io/pypa/manylinux_2_24_x86_64"
+        python_abi:
+          - "cp38-cp38"
+
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup python/pip.
+        run: |
+          update-alternatives --install /usr/bin/python python /opt/python/${{ matrix.python_abi }}/bin/python 0
+          python --version
+          update-alternatives --install /usr/bin/pip pip /opt/python/${{ matrix.python_abi }}/bin/pip 0
+          pip install -U pip
+          pip --version
+
+      - name: Setup pyright.
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+          apt-get install -y nodejs
+          npm install -g pyright
+          pyright --version
+
+      - name: Install.
+        run: |
+          pip install -e .
+
+          # yapf & flake8.
+          pip install yapf flake8
+          update-alternatives --install /usr/bin/yapf yapf /opt/python/${{ matrix.python_abi }}/bin/yapf 0
+          update-alternatives --install /usr/bin/flake8 flake8 /opt/python/${{ matrix.python_abi }}/bin/flake8 0
+
+      - name: Lint (vkit)
+        run: |
+          yapf -d -r vkit && flake8 vkit
+
+      - name: Lint (vkit_case)
+        run: |
+          yapf -d -r vkit_case && flake8 vkit_case
+
+      - name: Type checking
+        run: |
+          EXTRA_PATH=$(python -c 'import sys, json; print(json.dumps([path for path in sys.path if path]).replace("[", "\[").replace("]", "\]"))')
+          echo "EXTRA_PATH=${EXTRA_PATH}"
+
+          SED_PATTERN_0='s|"extraPaths": \[\]|"extraPaths": '
+          SED_PATTERN_1="$EXTRA_PATH"
+          SED_PATTERN_2='|g'
+          SED_PATTERN="${SED_PATTERN_0}${SED_PATTERN_1}${SED_PATTERN_2}"
+          echo "SED_PATTERN=${SED_PATTERN}"
+
+          sed -i "$SED_PATTERN" pyrightconfig.json
+
+          pyright
+
+      - name: Build wheel & publish (nightly).
+        run: |
+          # twine.
+          pip install twine
+          update-alternatives --install /usr/bin/twine twine /opt/python/${{ matrix.python_abi }}/bin/twine 0
+
+          # Build wheel.
+          SED_PATTERN="s|name = vkit|name = python-vkit-nightly|g"
+          sed -i "$SED_PATTERN" setup.cfg
+
+          SED_PATTERN="s|version = .*|version = $(date +'%Y%m%d%H%M')|g"
+          sed -i "$SED_PATTERN" setup.cfg
+
+          python setup.py clean --all
+          python -m build --wheel
+
+          # Publish.
+          LATEST_WHEEL=$(ls -t dist/*-py3-none-any.whl | head -1 | xargs -n 1 basename)
+          twine upload --skip-existing "dist/${LATEST_WHEEL}"
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
