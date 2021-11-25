@@ -145,49 +145,59 @@ class CameraPointProjector(PointProjector):
 class CameraOperationState(StateImageGridBased):
 
     @staticmethod
-    def fill_camera_model_config(
+    def complete_camera_model_config(
         height: int,
         width: int,
         src_image_grid: VImageGrid,
         point_2d_to_3d_strategy: Point2dTo3dStrategy,
         camera_model_config: CameraModelConfig,
     ):
+        if camera_model_config.principal_point \
+                and camera_model_config.focal_length \
+                and camera_model_config.camera_distance:
+            return camera_model_config
+
+        # Make a copy.
+        camera_model_config = attr.evolve(camera_model_config)
+
         if not camera_model_config.principal_point:
             camera_model_config.principal_point = [height // 2, width // 2]
 
-        if camera_model_config.focal_length and camera_model_config.camera_distance:
-            return
+        if not camera_model_config.focal_length:
+            camera_model_config.focal_length = max(height, width)
 
-        # Fixed focal length.
-        camera_model_config.focal_length = max(height, width)
+        if not camera_model_config.camera_distance:
+            # Initial guess.
+            camera_distance = camera_model_config.focal_length
 
-        # Initial guess.
-        camera_distance = camera_model_config.focal_length
+            # To camera coordinate.
+            extrinsic_mat = CameraModel.generate_extrinsic_mat(
+                CameraModel.prep_rotation_unit_vec(camera_model_config.rotation_unit_vec),
+                CameraModel.prep_rotation_theta(camera_model_config.rotation_theta),
+                camera_distance,
+                CameraModel.prep_principal_point(list(camera_model_config.principal_point)),
+            )
+            intrinsic_mat = CameraModel.generate_intrinsic_mat(camera_model_config.focal_length)
 
-        # To camera coordinate.
-        extrinsic_mat = CameraModel.generate_extrinsic_mat(
-            CameraModel.prep_rotation_unit_vec(camera_model_config.rotation_unit_vec),
-            CameraModel.prep_rotation_theta(camera_model_config.rotation_theta),
-            camera_distance,
-            CameraModel.prep_principal_point(list(camera_model_config.principal_point)),
-        )
-        intrinsic_mat = CameraModel.generate_intrinsic_mat(camera_model_config.focal_length)
+            np_3d_points = point_2d_to_3d_strategy.generate_np_3d_points(
+                src_image_grid.flatten_points
+            )
+            np_3d_points = np.matmul(
+                extrinsic_mat,
+                np.hstack((np_3d_points, np.ones((np_3d_points.shape[0], 1)))).transpose(),
+            )
+            np_3d_points = np.matmul(
+                intrinsic_mat,
+                np_3d_points,
+            )
 
-        np_3d_points = point_2d_to_3d_strategy.generate_np_3d_points(src_image_grid.flatten_points)
-        np_3d_points = np.matmul(
-            extrinsic_mat,
-            np.hstack((np_3d_points, np.ones((np_3d_points.shape[0], 1)))).transpose(),
-        )
-        np_3d_points = np.matmul(
-            intrinsic_mat,
-            np_3d_points,
-        )
+            # Adjust camera distance.
+            pos_zs = np_3d_points[2]
+            delta = pos_zs.min() - camera_distance
+            # Add one to make sure one point touch the plane.
+            camera_model_config.camera_distance = camera_distance - delta + 1
 
-        # Adjust camera distance.
-        pos_zs = np_3d_points[2]
-        delta = pos_zs.min() - camera_distance
-        # Add one to make sure one point touch the plane.
-        camera_model_config.camera_distance = camera_distance - delta + 1
+        return camera_model_config
 
     def __init__(
         self,
@@ -199,7 +209,7 @@ class CameraOperationState(StateImageGridBased):
     ):
         src_image_grid = create_src_image_grid(height, width, grid_size)
 
-        self.fill_camera_model_config(
+        camera_model_config = self.complete_camera_model_config(
             height,
             width,
             src_image_grid,

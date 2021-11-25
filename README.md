@@ -172,6 +172,7 @@ fib vkit_case.vkit_doc_helper.demo:run \
 	<img alt="demo_output.png" src="https://i.loli.net/2021/11/25/Ww7yr3a25H4sUgN.png">
 </div>
 
+
 ### camera_cubic_curve
 
 描述：基于相机模型的与三次函数的 3D 曲面效果。
@@ -201,13 +202,32 @@ class CameraCubicCurveConfig:
 
 其中：
 
-* todo
+* `CameraModelConfig` 是相机模型的配置（下同）
+  * `rotation_unit_vec`：旋转单位向量，即旋转指向方向，具体见 [cv.Rodrigues](https://docs.opencv.org/4.5.3/d9/d0c/group__calib3d.html#ga61585db663d9da06b68e70cfbf6a1eac) 里的解释
+  * `rotation_theta`：旋转的角度，区间 `[-180, 180]`。角度为正数，表示的方向与右手法则旋转方向一致
+  * `principal_point`：可选。相机成像光学轴（optical axis）与图片的相交点，使用原图的坐标表示。如果不提供，默认会设定为图片的中心点
+  * `focal_length`：可选。相机成像光学轴的焦距。如果不提供，会采用图像长宽中较大值作为焦距
+  * `camera_distance`：可选。指定相机坐标原点到 `principal_point` 的距离。如果不提供，会基于图片与成像屏幕相切的策略决定此距离
+
+* `CameraCubicCurveConfig` 控制如何生成曲面
+  * `curve_alpha`：投影左端点的斜率
+  * `curve_beta`：投影右端点的斜率
+  * `curve_direction`：投影线的方向，区间 `[0, 180]`。图片会按照这个方生成曲面，例如角度为 `0` 时曲面的“起伏”是横向的，`90` 时为纵向。基于投影位置，会生成 Z 轴的偏移量
+  * `curve_scale`：控制 Z 轴的偏移量的放大倍数，建议设为 `1.0`
+
 
 效果示例：
 
 <div align="center"><img alt="camera_cubic_curve.gif" src="https://i.loli.net/2021/11/25/B7Rpz46u5axO1sf.gif"></div>
 
+其中（下同）：
 
+* 左上：形变后图片，`VImage`
+* 右上：形变后多边形，`VPolygon`
+* 左中：形变后图像平面网格，`VImageGrid`
+* 右中：图像 `active_image_mask` 蒙板，`VIMageMask`
+* 左下：形变后图像蒙版，`VImageMask`
+* 右下：形变后评分图，`VImageScoreMap`
 
 ### camera_plane_line_fold
 
