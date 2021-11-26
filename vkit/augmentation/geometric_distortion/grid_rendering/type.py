@@ -11,6 +11,9 @@ from vkit.label.type import VPoint, VPolygon, VPointList
 class VImageGrid:
     points_2d: MutableSequence[MutableSequence[VPoint]]
 
+    # If set, then the grid is defined by grid_size.
+    grid_size: Optional[int] = None
+
     _cache_image_height: Optional[int] = None
     _cache_image_width: Optional[int] = None
 

@@ -21,7 +21,7 @@ def create_src_image_grid(height, width, grid_size):
             points.append(VPoint(y=y, x=x))
         points_2d.append(points)
 
-    return VImageGrid(points_2d=points_2d)
+    return VImageGrid(points_2d=points_2d, grid_size=grid_size)
 
 
 def create_dst_image_grid_and_shift_amounts_and_rescale_ratios(

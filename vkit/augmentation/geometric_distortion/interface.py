@@ -14,6 +14,7 @@ from typing import (
 
 import attr
 import numpy as np
+import cv2 as cv
 
 from vkit.image.type import VImage
 from vkit.label.type import (
@@ -27,6 +28,8 @@ from vkit.augmentation.opt import (
     T_CONFIG,
     handle_config_and_rnd,
 )
+
+from .grid_rendering.type import VImageGrid
 from .grid_rendering.grid_creator import create_dst_image_grid_and_shift_amounts_and_rescale_ratios
 from .grid_rendering.grid_blender import (
     blend_src_to_dst_image,
@@ -592,7 +595,7 @@ class GeometricDistortion(Generic[T_CONFIG, T_STATE, T_CALL_FUNC_X_RETURN]):
 
 class StateImageGridBased:
 
-    def __init__(self, src_image_grid, point_projector):
+    def __init__(self, src_image_grid: VImageGrid, point_projector):
         self.src_image_grid = src_image_grid
         self.point_projector = point_projector
 
@@ -606,7 +609,7 @@ class StateImageGridBased:
             rescale_as_src=False,
         )
 
-    def shift_and_rescale_point(self, point):
+    def shift_and_rescale_point(self, point: VPoint):
         return VPoint(
             y=(point.y - self.shift_amount_y) * self.rescale_ratio_y,
             x=(point.x - self.shift_amount_x) * self.rescale_ratio_x,
@@ -642,8 +645,32 @@ def geometric_distortion_image_grid_based_active_image_mask(config, state, image
     )
 
 
-def geometric_distortion_image_grid_based_point(config, state, shape, point):
-    return state.shift_and_rescale_point(state.point_projector.project_point(point))
+def geometric_distortion_image_grid_based_point(
+    config,
+    state: StateImageGridBased,
+    shape,
+    point: VPoint,
+):
+    src_image_grid = state.src_image_grid
+    dst_image_grid = state.dst_image_grid
+
+    assert src_image_grid.grid_size
+    polygon_row = point.y // src_image_grid.grid_size
+    polygon_col = point.x // src_image_grid.grid_size
+
+    src_polygon = src_image_grid.generate_polygon(polygon_row, polygon_col)
+    dst_polygon = dst_image_grid.generate_polygon(polygon_row, polygon_col)
+
+    trans_mat = cv.getPerspectiveTransform(
+        src_polygon.to_np_array().astype(np.float32),
+        dst_polygon.to_np_array().astype(np.float32),
+        cv.DECOMP_SVD,
+    )
+    dst_tx, dst_ty, dst_t = np.matmul(trans_mat, (point.x, point.y, 1.0))
+    return VPoint(
+        y=dst_ty / dst_t,
+        x=dst_tx / dst_t,
+    )
 
 
 class GeometricDistortionImageGridBased(
