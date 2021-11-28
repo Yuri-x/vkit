@@ -7,11 +7,12 @@ import iolite as io
 import numpy as np
 
 from vkit.image.type import VImage
-from vkit.label.type import VImageMask, VImageScoreMap, VPolygon, VTextPolygon
+from vkit.label.type import VImageMask, VImageScoreMap, VPolygon, VTextPolygon, VPoint
 from vkit.label.visualization import (
     visualize_image_mask,
     visualize_scale_image_score_map,
     visualize_polygons,
+    visualize_points,
 )
 from vkit.augmentation.geometric_distortion.grid_rendering.visualization import visualize_image_grid
 
@@ -23,7 +24,22 @@ from vkit.augmentation.geometric_distortion import (
     camera_cubic_curve,
     CameraPlaneLineFoldConfig,
     camera_plane_line_fold,
+    CameraPlaneLineCurveConfig,
+    camera_plane_line_curve,
+    SimilarityMlsConfig,
+    similarity_mls,
+    ShearHoriConfig,
+    shear_hori,
+    ShearVertConfig,
+    shear_vert,
+    RotateConfig,
+    rotate,
+    SkewHoriConfig,
+    skew_hori,
+    SkewVertConfig,
+    skew_vert,
 )
+from vkit.augmentation.geometric_distortion.mls import SimilarityMlsState
 
 
 def load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl):
@@ -42,6 +58,10 @@ def interpolate_value_ratio(val_src, val_dst, ratio):
     assert type(val_src) is type(val_dst)
     if isinstance(val_src, (int, float)):
         return val_src + (val_dst - val_src) * ratio
+    elif isinstance(val_src, VPoint):
+        y = interpolate_value_ratio(val_src.y, val_dst.y, ratio)  # type: ignore
+        x = interpolate_value_ratio(val_src.x, val_dst.x, ratio)  # type: ignore
+        return VPoint(y=y, x=x)  # type: ignore
     elif isinstance(val_src, np.ndarray):
         val = interpolate_value_ratio(
             val_src.tolist(),
@@ -93,9 +113,11 @@ def interpolate_config(config_src, config_dst, fields, frame_idx, num_frames):
     return config
 
 
-def generate_frame_configs(configs, fields, num_frames_per_step):
+def generate_frame_configs(configs, fields, num_frames_per_step, drop_last=False):
     frame_configs = []
     for config_idx, config_src in enumerate(configs):
+        if config_idx == len(configs) - 1 and drop_last:
+            break
         config_dst = configs[(config_idx + 1) % len(configs)]
         for frame_idx in range(num_frames_per_step):
             frame_configs.append(
@@ -172,16 +194,19 @@ def generate_gif(
 
     mats = []
     for result in results:
-        # image      | polygons
-        # image_grid | active_mask
-        # image_mask | image_score_map
         dst_image_grid = None
         assert result.state
         if hasattr(result.state, 'dst_image_grid'):
             dst_image_grid = result.state.dst_image_grid
+
         if dst_image_grid:
+            # image      | polygons
+            # image_grid | active_mask
+            # image_mask | image_score_map
             mat = np.zeros((height_max * 3, width_max * 2, 3), dtype=np.uint8)
         else:
+            # image      | polygons
+            # image_mask | image_score_map
             mat = np.zeros((height_max * 2, width_max * 2, 3), dtype=np.uint8)
 
         height_offset = 0
@@ -201,6 +226,15 @@ def generate_gif(
         if dst_image_grid:
             # Row
             vis_dst_image_grid = visualize_image_grid(dst_image_grid).to_rgb_image()
+            if isinstance(result.state, SimilarityMlsState):
+                # SimilarityMls customization.
+                dst_handle_points = result.state.dst_handle_points
+                vis_dst_image_grid = visualize_points(
+                    vis_dst_image_grid,
+                    dst_handle_points,
+                    style='circle-5',
+                )
+
             mat[height_offset:height_offset + image.height, :image.width] = vis_dst_image_grid.mat
 
             active_image_mask = result.active_image_mask
@@ -365,14 +399,320 @@ def generate_camera_plane_line_fold_gif(scale_sample_pkl, output_gif):
     generate_gif(output_gif, results, 3)
 
 
+def generate_camera_plane_line_curve_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            CameraPlaneLineCurveConfig(
+                curve_point=(200, 200),
+                curve_direction=0,
+                curve_perturb_vec=(0, 0, 0),
+                curve_alpha=3.0,
+                camera_model_config=CameraModelConfig(
+                    rotation_unit_vec=[1.0, 0.0, 0.0],
+                    rotation_theta=0,
+                ),
+                grid_size=10,
+            ),
+            CameraPlaneLineCurveConfig(
+                curve_point=(200, 200),
+                curve_direction=0,
+                curve_perturb_vec=(0, 0, 300),
+                curve_alpha=2.0,
+                camera_model_config=CameraModelConfig(
+                    rotation_unit_vec=[1.0, 0.0, 0.0],
+                    rotation_theta=30,
+                ),
+                grid_size=10,
+            ),
+            CameraPlaneLineCurveConfig(
+                curve_point=(200, 200),
+                curve_direction=0,
+                curve_perturb_vec=(0, 0, 300),
+                curve_alpha=2.0,
+                camera_model_config=CameraModelConfig(
+                    rotation_unit_vec=[0.0, 1.0, 0.0],
+                    rotation_theta=30,
+                ),
+                grid_size=10,
+            ),
+        ],
+        (
+            'curve_point',
+            'curve_direction',
+            'curve_perturb_vec',
+            'curve_alpha',
+            'camera_model_config.rotation_unit_vec',
+            'camera_model_config.rotation_theta',
+        ),
+        16,
+    )
+
+    (
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    results = apply_geometric_distortion_to_frame_configs(
+        frame_configs,
+        camera_plane_line_curve,
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    )
+
+    generate_gif(output_gif, results, 3)
+
+
+def generate_similarity_mls_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            SimilarityMlsConfig(
+                src_handle_points=[
+                    VPoint(y=100, x=25),
+                    VPoint(y=100, x=85),
+                    VPoint(y=100, x=145),
+                    VPoint(y=100, x=205),
+                    VPoint(y=100, x=265),
+                ],
+                dst_handle_points=[
+                    VPoint(y=100, x=25),
+                    VPoint(y=100, x=85),
+                    VPoint(y=100, x=145),
+                    VPoint(y=100, x=205),
+                    VPoint(y=100, x=265),
+                ],
+                grid_size=20,
+            ),
+            SimilarityMlsConfig(
+                src_handle_points=[
+                    VPoint(y=100, x=25),
+                    VPoint(y=100, x=85),
+                    VPoint(y=100, x=145),
+                    VPoint(y=100, x=205),
+                    VPoint(y=100, x=265),
+                ],
+                dst_handle_points=[
+                    VPoint(y=100, x=25),
+                    VPoint(y=50, x=85),
+                    VPoint(y=100, x=145),
+                    VPoint(y=150, x=205),
+                    VPoint(y=100, x=265),
+                ],
+                grid_size=20,
+            ),
+            SimilarityMlsConfig(
+                src_handle_points=[
+                    VPoint(y=100, x=25),
+                    VPoint(y=100, x=85),
+                    VPoint(y=100, x=145),
+                    VPoint(y=100, x=205),
+                    VPoint(y=100, x=265),
+                ],
+                dst_handle_points=[
+                    VPoint(y=100, x=25),
+                    VPoint(y=50, x=85),
+                    VPoint(y=50, x=145),
+                    VPoint(y=150, x=205),
+                    VPoint(y=150, x=265),
+                ],
+                grid_size=20,
+            ),
+        ],
+        ('dst_handle_points',),
+        16,
+    )
+
+    (
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    results = apply_geometric_distortion_to_frame_configs(
+        frame_configs,
+        similarity_mls,
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    )
+
+    generate_gif(output_gif, results, 3)
+
+
+def generate_shear_hori_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            ShearHoriConfig(angle=0),
+            ShearHoriConfig(angle=30),
+            ShearHoriConfig(angle=-30),
+        ],
+        ('angle',),
+        16,
+    )
+
+    (
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    results = apply_geometric_distortion_to_frame_configs(
+        frame_configs,
+        shear_hori,
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    )
+
+    generate_gif(output_gif, results, 3)
+
+
+def generate_shear_vert_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            ShearVertConfig(angle=0),
+            ShearVertConfig(angle=30),
+            ShearVertConfig(angle=-30),
+        ],
+        ('angle',),
+        16,
+    )
+
+    (
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    results = apply_geometric_distortion_to_frame_configs(
+        frame_configs,
+        shear_vert,
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    )
+
+    generate_gif(output_gif, results, 3)
+
+
+def generate_rotate_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            RotateConfig(angle=0),
+            RotateConfig(angle=120),
+            RotateConfig(angle=240),
+            RotateConfig(angle=360),
+        ],
+        ('angle',),
+        16,
+        drop_last=True,
+    )
+
+    (
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    results = apply_geometric_distortion_to_frame_configs(
+        frame_configs,
+        rotate,
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    )
+
+    generate_gif(output_gif, results, 3)
+
+
+def generate_skew_hori_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            SkewHoriConfig(ratio=0.0),
+            SkewHoriConfig(ratio=0.2),
+            SkewHoriConfig(ratio=-0.2),
+        ],
+        ('ratio',),
+        16,
+    )
+
+    (
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    results = apply_geometric_distortion_to_frame_configs(
+        frame_configs,
+        skew_hori,
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    )
+
+    generate_gif(output_gif, results, 3)
+
+
+def generate_skew_vert_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            SkewVertConfig(ratio=0.0),
+            SkewVertConfig(ratio=0.2),
+            SkewVertConfig(ratio=-0.2),
+        ],
+        ('ratio',),
+        16,
+    )
+
+    (
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    results = apply_geometric_distortion_to_frame_configs(
+        frame_configs,
+        skew_vert,
+        image,
+        image_mask,
+        image_score_map,
+        polygons,
+    )
+
+    generate_gif(output_gif, results, 3)
+
+
 def debug():
     from vkit.opt import get_data_folder
     folder = get_data_folder(__file__)
 
-    generate_camera_cubic_curve_gif(f'{folder}/1093.pkl', f'{folder}/camera_cubic_curve.gif')
-    generate_camera_plane_line_fold_gif(
-        f'{folder}/1093.pkl', f'{folder}/camera_plane_line_fold.gif'
-    )
+    # generate_camera_cubic_curve_gif(f'{folder}/1093.pkl', f'{folder}/camera_cubic_curve.gif')
+    # generate_camera_plane_line_fold_gif(
+    #     f'{folder}/1093.pkl', f'{folder}/camera_plane_line_fold.gif'
+    # )
+    # generate_camera_plane_line_curve_gif(
+    #     f'{folder}/1093.pkl', f'{folder}/camera_plane_line_curve.gif'
+    # )
+    # generate_similarity_mls_gif(f'{folder}/1093.pkl', f'{folder}/similarity_mls.gif')
+    # generate_shear_hori_gif(f'{folder}/1093.pkl', f'{folder}/shear_hori.gif')
+    # generate_shear_vert_gif(f'{folder}/1093.pkl', f'{folder}/shear_vert.gif')
+    # generate_rotate_gif(f'{folder}/1093.pkl', f'{folder}/rotate.gif')
+    # generate_skew_hori_gif(f'{folder}/1093.pkl', f'{folder}/skew_hori.gif')
+    generate_skew_vert_gif(f'{folder}/1093.pkl', f'{folder}/skew_vert.gif')
 
 
 def debug_block():

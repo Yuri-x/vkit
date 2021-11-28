@@ -62,7 +62,7 @@ def affine_polygons(state, polygons: Sequence[VPolygon]):
 
 @attr.define
 class ShearHoriConfig:
-    # angle: int, [-90, 90], positive value for rightward direction.
+    # angle: int, (-90, 90), positive value for rightward direction.
     angle: int
 
 
@@ -133,31 +133,37 @@ shear_hori = GeometricDistortion(
 
 @attr.define
 class ShearVertConfig:
-    # angle: int, [-90, 90], positive value for upward direction.
+    # angle: int, (-90, 90), positive value for downward direction.
     angle: int
 
 
 class ShearVertState:
 
     def __init__(self, config, shape):
-        tan_phi = math.tan(math.radians(config.angle))
+        tan_abs_phi = math.tan(math.radians(abs(config.angle)))
 
         height, width = shape
-        shift_y = abs(width * tan_phi)
+        shift_y = width * tan_abs_phi
         self.dsize = (width, math.ceil(height + shift_y))
 
         if config.angle < 0:
-            # Shear down & the negative part.
-            self.trans_mat = np.array([
-                (1, 0, 0),
-                (-tan_phi, 1, 0),
-            ], dtype=np.float32)
-        elif config.angle > 0:
             # Shear up.
-            self.trans_mat = np.array([
-                (1, 0, 0),
-                (-tan_phi, 1, shift_y),
-            ], dtype=np.float32)
+            self.trans_mat = np.array(
+                [
+                    (1, 0, 0),
+                    (-tan_abs_phi, 1, shift_y),
+                ],
+                dtype=np.float32,
+            )
+        elif config.angle > 0:
+            # Shear down & the negative part.
+            self.trans_mat = np.array(
+                [
+                    (1, 0, 0),
+                    (tan_abs_phi, 1, 0),
+                ],
+                dtype=np.float32,
+            )
         else:
             # No need to transform.
             self.trans_mat = None
@@ -351,7 +357,7 @@ class SkewHoriState:
             np.array(dst_xy_pairs, dtype=np.float32),
             cv.DECOMP_SVD,
         )
-        self.dsize = shape
+        self.dsize = (width, height)
 
 
 def skew_hori_mat(config, state, mat):
@@ -436,7 +442,7 @@ class SkewVertState:
             np.array(dst_xy_pairs, dtype=np.float32),
             cv.DECOMP_SVD,
         )
-        self.dsize = shape
+        self.dsize = (width, height)
 
 
 def skew_vert_mat(config, state, mat):

@@ -9,6 +9,8 @@ from .affine import (
     rotate,
     SkewHoriConfig,
     skew_hori,
+    SkewVertConfig,
+    skew_vert,
 )
 from .mls import (
     SimilarityMlsConfig,
