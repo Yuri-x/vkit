@@ -46,6 +46,11 @@ jobs:
           update-alternatives --install /usr/bin/yapf yapf /opt/python/${{ matrix.python_abi }}/bin/yapf 0
           update-alternatives --install /usr/bin/flake8 flake8 /opt/python/${{ matrix.python_abi }}/bin/flake8 0
 
+          # doc.
+          pip install vkit-doc-tool
+          update-alternatives --install /usr/bin/vkit-doc-tool vkit-doc-tool /opt/python/${{ matrix.python_abi }}/bin/vkit-doc-tool 0
+          update-alternatives --install /usr/bin/markdown-toc markdown-toc /opt/python/${{ matrix.python_abi }}/bin/markdown-toc 0
+
       - name: Lint (vkit)
         run: |
           yapf -d -r vkit && flake8 vkit
@@ -68,6 +73,11 @@ jobs:
           sed -i "$SED_PATTERN" pyrightconfig.json
 
           pyright
+
+      - name: Doc checking
+        run: |
+          vkit-doc-tool README/README.md README_CI.md
+          diff README.md README_CI.md || exit 1
 
       - name: Build wheel & publish (nightly).
         run: |
