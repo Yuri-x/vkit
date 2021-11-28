@@ -1,4 +1,4 @@
-### 接口使用
+### 几何畸变接口说明
 
 Import 示例:
 
@@ -38,13 +38,13 @@ def distort(
 
 其中：
 
-* `config_or_config_generator`：几何畸变配置，或者一个生成配置的函数。每种几何畸变的操作，都有对应的独立配置类型，如 `camera_cubic_curve` 对应 `CameraCubicCurveConfig`
+* `config_or_config_generator`：传入几何畸变配置，或者传入一个生成配置的函数。每种几何畸变的操作，都有对应的独立配置类型，如 `camera_cubic_curve` 对应 `CameraCubicCurveConfig`
 * `image`：需要进行几何畸变的图片
 * `image_mask`, `image_score_map` 等皆为可选项，会对传入对象执行与 `image` 一致的几何畸变
 * `get_active_image_mask`：如果设置，会在结果中返回 `active_image_mask` 蒙板，用于表示变换后属于原图的激活区域
 * `get_config`：如果设置，会在结果中返回配置实例
 * `get_state`：如果设置，会在结果中返回状态实例
-* `rnd`：`np.random.RandomState` 实例，用于生成配置或者其他需要随机行为的操作
+* `rnd`：`numpy.random.RandomState` 实例，用于生成配置或者其他需要随机行为的操作
 
 `GeometricDistortion.distort` 接口返回类型：
 
@@ -99,7 +99,7 @@ def run(image_file, output_file):
 可以通过 `fireball` (`pip install fireball`) 直接调用以上示例：
 
 ```bash
-fib vkit_case.vkit_doc_helper.demo:run \
+fib vkit_case.vkit_doc_helper.demo_geo:run \
     --image_file="REQUIRED" \
     --output_file="REQUIRED"
 ```
@@ -111,3 +111,4 @@ fib vkit_case.vkit_doc_helper.demo:run \
 	<img alt="demo_output.png" src="https://i.loli.net/2021/11/25/Ww7yr3a25H4sUgN.png">
 </div>
 下面是几何畸变的具体实现
+

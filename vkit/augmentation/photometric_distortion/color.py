@@ -9,48 +9,58 @@ from .interface import PhotometricDistortion
 
 
 @attr.define
-class BrightnessShiftConfig:
+class MeanShiftConfig:
     delta: int
 
 
-def brightness_shift_image(config, image):
+def mean_shift_image(config, image):
     # Change mean.
     mat = extract_mat_from_image(image, np.int16) + config.delta
     mat = clip_mat_back_to_uint8(mat)
     return attr.evolve(image, mat=mat)
 
 
-brightness_shift = PhotometricDistortion(BrightnessShiftConfig, brightness_shift_image)
+mean_shift = PhotometricDistortion(MeanShiftConfig, mean_shift_image)
 
 
 @attr.define
-class ContrastShiftConfig:
+class StdShiftConfig:
     scale: float
 
 
-def contrast_shift_image(config, image):
-    # Change std.
+def std_shift_image(config, image):
+    # Change std while preserve mean.
     assert config.scale > 0
-    mat = extract_mat_from_image(image, np.float32) * config.scale
+    mat = extract_mat_from_image(image, np.float32)
+
+    if mat.ndim == 2:
+        mean = np.mean(mat)
+    elif mat.ndim == 3:
+        mean = np.mean(mat.reshape(-1, mat.shape[-1]), axis=0)
+    else:
+        raise NotImplementedError()
+
+    mat = mat * config.scale - mean * (config.scale - 1)
+
     mat = clip_mat_back_to_uint8(mat)
     return attr.evolve(image, mat=mat)
 
 
-contrast_shift = PhotometricDistortion(ContrastShiftConfig, contrast_shift_image)
+std_shift = PhotometricDistortion(StdShiftConfig, std_shift_image)
 
 
 @attr.define
-class LightingShiftConfig:
+class ChannelPermutateConfig:
     rnd_state: Any = None
 
 
-def lighting_shift_image(config, image, rnd):
+def channel_permutate_image(config, image, rnd):
     indices = rnd.permutation(image.num_channels)
     mat = image.mat[:, :, indices]
     return attr.evolve(image, mat=mat)
 
 
-lighting_shift = PhotometricDistortion(LightingShiftConfig, lighting_shift_image)
+channel_permutate = PhotometricDistortion(ChannelPermutateConfig, channel_permutate_image)
 
 
 @attr.define
@@ -64,7 +74,7 @@ def hue_shift_image(config, image):
 
     # Cyclic.
     mat[:, :, 0] += config.delta
-    mat = mat % 256
+    mat = mat % 256  # type: ignore
     mat = mat.astype(np.uint8)
 
     return attr.evolve(image, mat=mat)
@@ -97,21 +107,21 @@ def debug():
 
     image = VImage.from_file(f'{folder}/Lenna.png')
 
-    config = BrightnessShiftConfig(delta=100)
-    brightness_shift.distort_image(config, image).to_file(f'{folder}/brightness_p_100.png')
+    config = MeanShiftConfig(delta=100)
+    mean_shift.distort_image(config, image).to_file(f'{folder}/mean_shift_p_100.png')
 
-    config = BrightnessShiftConfig(delta=-100)
-    brightness_shift.distort_image(config, image).to_file(f'{folder}/brightness_m_100.png')
+    config = MeanShiftConfig(delta=-100)
+    mean_shift.distort_image(config, image).to_file(f'{folder}/mean_shift_m_100.png')
 
-    config = ContrastShiftConfig(scale=2)
-    contrast_shift.distort_image(config, image).to_file(f'{folder}/contrast_2.png')
+    config = StdShiftConfig(scale=2)
+    std_shift.distort_image(config, image).to_file(f'{folder}/std_shift_2.png')
 
-    config = ContrastShiftConfig(scale=0.5)
-    contrast_shift.distort_image(config, image).to_file(f'{folder}/contrast_0.5.png')
+    config = StdShiftConfig(scale=0.5)
+    std_shift.distort_image(config, image).to_file(f'{folder}/std_shift_0.5.png')
 
-    config = LightingShiftConfig()
-    lighting_shift.distort_image(config, image, rnd).to_file(f'{folder}/lighting_0.png')
-    lighting_shift.distort_image(config, image, rnd).to_file(f'{folder}/lighting_1.png')
+    config = ChannelPermutateConfig()
+    channel_permutate.distort_image(config, image, rnd).to_file(f'{folder}/channel_permutate_0.png')
+    channel_permutate.distort_image(config, image, rnd).to_file(f'{folder}/channel_permutate_1.png')
 
     image_hsv = image.to_hsv_image()
 

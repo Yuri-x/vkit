@@ -41,6 +41,28 @@ from vkit.augmentation.geometric_distortion import (
 )
 from vkit.augmentation.geometric_distortion.mls import SimilarityMlsState
 
+from vkit.augmentation.photometric_distortion import (
+    PhotometricDistortion,
+    MeanShiftConfig,
+    mean_shift,
+    StdShiftConfig,
+    std_shift,
+    ChannelPermutateConfig,
+    channel_permutate,
+    HueShiftConfig,
+    hue_shift,
+    SaturationShiftConfig,
+    saturation_shift,
+    GaussionNoiseConfig,
+    gaussion_noise,
+    PoissonNoiseConfig,
+    poisson_noise,
+    ImpulseNoiseConfig,
+    impulse_noise,
+    SpeckleNoiseConfig,
+    speckle_noise,
+)
+
 
 def load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl):
     scale_sample = io.read_joblib(scale_sample_pkl)
@@ -57,7 +79,7 @@ def load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl):
 def interpolate_value_ratio(val_src, val_dst, ratio):
     assert type(val_src) is type(val_dst)
     if isinstance(val_src, (int, float)):
-        return val_src + (val_dst - val_src) * ratio
+        return type(val_src)(val_src + (val_dst - val_src) * ratio)
     elif isinstance(val_src, VPoint):
         y = interpolate_value_ratio(val_src.y, val_dst.y, ratio)  # type: ignore
         x = interpolate_value_ratio(val_src.x, val_dst.x, ratio)  # type: ignore
@@ -713,6 +735,379 @@ def debug():
     # generate_rotate_gif(f'{folder}/1093.pkl', f'{folder}/rotate.gif')
     # generate_skew_hori_gif(f'{folder}/1093.pkl', f'{folder}/skew_hori.gif')
     generate_skew_vert_gif(f'{folder}/1093.pkl', f'{folder}/skew_vert.gif')
+
+
+def apply_photometric_distortion(
+    frame_config_idx: int,
+    frame_config,
+    photometric_distortion: PhotometricDistortion,
+    image: VImage,
+):
+    new_image = photometric_distortion.distort_image(
+        frame_config,
+        image,
+        rnd=np.random.RandomState(),
+    )
+    return frame_config_idx, new_image
+
+
+def proc_apply_photometric_distortion(args):
+    return apply_photometric_distortion(*args)
+
+
+def apply_photometric_distortion_to_frame_configs(
+    frame_configs,
+    photometric_distortion: PhotometricDistortion,
+    image: VImage,
+) -> Sequence[VImage]:
+    new_images = [None] * len(frame_configs)
+    with multiprocessing.Pool() as pool:
+        for frame_config_idx, new_image in tqdm(
+            pool.imap_unordered(
+                proc_apply_photometric_distortion, [(
+                    frame_config_idx,
+                    frame_config,
+                    photometric_distortion,
+                    image,
+                ) for frame_config_idx, frame_config in enumerate(frame_configs)]
+            )
+        ):
+            new_images[frame_config_idx] = new_image
+    return new_images  # type: ignore
+
+
+def generate_pho_gif(
+    path,
+    image: VImage,
+    new_images: Sequence[VImage],
+    num_seconds,
+):
+    mats = []
+    for new_image in new_images:
+        # image      | new_image
+        mat = np.zeros((image.height, image.width * 2, 3), dtype=np.uint8)
+
+        mat[:, :image.width] = image.mat
+        mat[:, image.width:] = new_image.to_rgb_image().mat
+
+        mats.append(mat)
+
+    num_frames = len(new_images)
+    from moviepy.editor import ImageSequenceClip
+    clip = ImageSequenceClip(mats, fps=num_frames // num_seconds)
+    clip.write_gif(path)
+
+
+def generate_mean_shift_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            MeanShiftConfig(delta=0),
+            MeanShiftConfig(delta=100),
+            MeanShiftConfig(delta=-100),
+        ],
+        ('delta',),
+        16,
+    )
+
+    (
+        image,
+        _,
+        _,
+        _,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    new_images = apply_photometric_distortion_to_frame_configs(
+        frame_configs,
+        mean_shift,
+        image,
+    )
+
+    generate_pho_gif(
+        output_gif,
+        image,
+        new_images,
+        num_seconds=3,
+    )
+
+
+def generate_std_shift_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            StdShiftConfig(scale=1.0),
+            StdShiftConfig(scale=2.0),
+            StdShiftConfig(scale=0.5),
+        ],
+        ('scale',),
+        16,
+    )
+
+    (
+        image,
+        _,
+        _,
+        _,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    new_images = apply_photometric_distortion_to_frame_configs(
+        frame_configs,
+        std_shift,
+        image,
+    )
+
+    generate_pho_gif(
+        output_gif,
+        image,
+        new_images,
+        num_seconds=3,
+    )
+
+
+def generate_channel_permutate_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            ChannelPermutateConfig(),
+            ChannelPermutateConfig(),
+        ],
+        (),
+        16,
+    )
+
+    (
+        image,
+        _,
+        _,
+        _,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    new_images = apply_photometric_distortion_to_frame_configs(
+        frame_configs,
+        channel_permutate,
+        image,
+    )
+
+    generate_pho_gif(
+        output_gif,
+        image,
+        new_images,
+        num_seconds=1,
+    )
+
+
+def generate_hue_shift_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            HueShiftConfig(delta=0),
+            HueShiftConfig(delta=100),
+            HueShiftConfig(delta=-100),
+        ],
+        ('delta',),
+        16,
+    )
+
+    (
+        image,
+        _,
+        _,
+        _,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    new_images = apply_photometric_distortion_to_frame_configs(
+        frame_configs,
+        hue_shift,
+        image.to_hsv_image(),
+    )
+
+    generate_pho_gif(
+        output_gif,
+        image,
+        new_images,
+        num_seconds=3,
+    )
+
+
+def generate_saturation_shift_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            SaturationShiftConfig(delta=0),
+            SaturationShiftConfig(delta=100),
+            SaturationShiftConfig(delta=-100),
+        ],
+        ('delta',),
+        16,
+    )
+
+    (
+        image,
+        _,
+        _,
+        _,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    new_images = apply_photometric_distortion_to_frame_configs(
+        frame_configs,
+        saturation_shift,
+        image.to_hsv_image(),
+    )
+
+    generate_pho_gif(
+        output_gif,
+        image,
+        new_images,
+        num_seconds=3,
+    )
+
+
+def generate_gaussion_noise_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            GaussionNoiseConfig(std=0.0),
+            GaussionNoiseConfig(std=20.0),
+            GaussionNoiseConfig(std=100.0),
+        ],
+        ('std',),
+        8,
+    )
+
+    (
+        image,
+        _,
+        _,
+        _,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    new_images = apply_photometric_distortion_to_frame_configs(
+        frame_configs,
+        gaussion_noise,
+        image,
+    )
+
+    generate_pho_gif(
+        output_gif,
+        image,
+        new_images,
+        num_seconds=3,
+    )
+
+
+def generate_poisson_noise_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            PoissonNoiseConfig(),
+            PoissonNoiseConfig(),
+        ],
+        (),
+        16,
+    )
+
+    (
+        image,
+        _,
+        _,
+        _,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    # apply_photometric_distortion(
+    #     0,
+    #     frame_configs[0],
+    #     poisson_noise,
+    #     image,
+    # )
+
+    new_images = apply_photometric_distortion_to_frame_configs(
+        frame_configs,
+        poisson_noise,
+        image,
+    )
+
+    generate_pho_gif(
+        output_gif,
+        image,
+        new_images,
+        num_seconds=3,
+    )
+
+
+def generate_impulse_noise_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            ImpulseNoiseConfig(prob_salt=0.0, prob_pepper=0.0),
+            ImpulseNoiseConfig(prob_salt=0.1, prob_pepper=0.0),
+            ImpulseNoiseConfig(prob_salt=0.05, prob_pepper=0.05),
+            ImpulseNoiseConfig(prob_salt=0.0, prob_pepper=0.1),
+        ],
+        (
+            'prob_salt',
+            'prob_pepper',
+        ),
+        8,
+    )
+
+    (
+        image,
+        _,
+        _,
+        _,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    new_images = apply_photometric_distortion_to_frame_configs(
+        frame_configs,
+        impulse_noise,
+        image,
+    )
+
+    generate_pho_gif(
+        output_gif,
+        image,
+        new_images,
+        num_seconds=3,
+    )
+
+
+def generate_speckle_noise_gif(scale_sample_pkl, output_gif):
+    frame_configs = generate_frame_configs(
+        [
+            SpeckleNoiseConfig(std=0.0),
+            SpeckleNoiseConfig(std=0.1),
+            SpeckleNoiseConfig(std=0.5),
+        ],
+        ('std',),
+        8,
+    )
+
+    (
+        image,
+        _,
+        _,
+        _,
+    ) = load_tianchi_ocr_scale_sample_pkl(scale_sample_pkl)
+
+    new_images = apply_photometric_distortion_to_frame_configs(
+        frame_configs,
+        speckle_noise,
+        image,
+    )
+
+    generate_pho_gif(
+        output_gif,
+        image,
+        new_images,
+        num_seconds=3,
+    )
+
+
+def debug_pho():
+    from vkit.opt import get_data_folder
+    folder = get_data_folder(__file__)
+
+    # generate_mean_shift_gif(f'{folder}/1093.pkl', f'{folder}/mean_shift.gif')
+    # generate_std_shift_gif(f'{folder}/1093.pkl', f'{folder}/std_shift.gif')
+    # generate_channel_permutate_gif(f'{folder}/1093.pkl', f'{folder}/channel_permutate.gif')
+    # generate_hue_shift_gif(f'{folder}/1093.pkl', f'{folder}/hue_shift.gif')
+    # generate_saturation_shift_gif(f'{folder}/1093.pkl', f'{folder}/saturation_shift.gif')
+    # generate_gaussion_noise_gif(f'{folder}/1093.pkl', f'{folder}/gaussion_noise.gif')
+    # generate_poisson_noise_gif(f'{folder}/1093.pkl', f'{folder}/poisson_noise.gif')
+    # generate_impulse_noise_gif(f'{folder}/1093.pkl', f'{folder}/impulse_noise.gif')
+    generate_speckle_noise_gif(f'{folder}/1093.pkl', f'{folder}/speckle_noise.gif')
 
 
 def debug_block():

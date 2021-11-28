@@ -14,4 +14,16 @@ path = "GEO_MLS.md"
 path = "GEO_AFFINE.md"
 ```
 
+## 光度畸变
+
+```vkit-doc
+[[ref]]
+path = "PHO_INTERFACE.md"
+
+[[ref]]
+path = "PHO_COLOR.md"
+
+[[ref]]
+path = "PHO_NOISE.md"
+```
 

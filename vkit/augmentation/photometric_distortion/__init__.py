@@ -1,12 +1,12 @@
 from .interface import PhotometricDistortion
 
 from .color import (
-    BrightnessShiftConfig,
-    brightness_shift,
-    ContrastShiftConfig,
-    contrast_shift_image,
-    LightingShiftConfig,
-    lighting_shift,
+    MeanShiftConfig,
+    mean_shift,
+    StdShiftConfig,
+    std_shift,
+    ChannelPermutateConfig,
+    channel_permutate,
     HueShiftConfig,
     hue_shift,
     SaturationShiftConfig,

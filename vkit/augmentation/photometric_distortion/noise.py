@@ -30,15 +30,7 @@ class PoissonNoiseConfig:
 
 
 def poisson_noise_image(config, image, rnd):
-    # Follows scikit-image.
-    # https://github.com/scikit-image/scikit-image/blob/main/skimage/util/noise.py#L181
-
-    # [1, 256]
-    scale = len(np.unique(image.mat))
-    scale = 2**np.ceil(np.log2(scale))
-
-    # Max = 255 * 256 < 2^16 - 1.
-    mat = rnd.poisson(extract_mat_from_image(image, np.uint16) * scale) / scale
+    mat = rnd.poisson(extract_mat_from_image(image, np.float32))
     mat = clip_mat_back_to_uint8(mat)
     return VImage(mat=mat)
 

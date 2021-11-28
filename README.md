@@ -3,7 +3,8 @@
 
 # Table of Contents
 * [vkit 总览](#vkit-总览)
-	* [简介](#简介)
+	* [项目简介](#项目简介)
+	* [项目愿景](#项目愿景)
 	* [安装](#安装)
 	* [近期计划](#近期计划)
 	* [已发布稳定版本](#已发布稳定版本)
@@ -11,7 +12,7 @@
 	* [赞助](#赞助)
 * [vkit 功能](#vkit-功能)
 	* [几何畸变](#几何畸变)
-		* [接口使用](#接口使用)
+		* [几何畸变接口说明](#几何畸变接口说明)
 		* [camera_cubic_curve](#camera_cubic_curve)
 		* [camera_plane_line_fold](#camera_plane_line_fold)
 		* [camera_plane_line_curve](#camera_plane_line_curve)
@@ -22,6 +23,16 @@
 		* [skew_hori](#skew_hori)
 		* [skew_vert](#skew_vert)
 	* [光度畸变](#光度畸变)
+		* [光度畸变接口说明](#光度畸变接口说明)
+		* [mean_shift](#mean_shift)
+		* [std_shift](#std_shift)
+		* [channel_permutate](#channel_permutate)
+		* [hue_shift](#hue_shift)
+		* [saturation_shift](#saturation_shift)
+		* [gaussion_noise](#gaussion_noise)
+		* [poisson_noise](#poisson_noise)
+		* [impulse_noise](#impulse_noise)
+		* [speckle_noise](#speckle_noise)
 	* [图像类型](#图像类型)
 	* [标注类型](#标注类型)
 * [vkit 数据方案](#vkit-数据方案)
@@ -30,29 +41,38 @@
 
 # vkit 总览
 
-## 简介
+## 项目简介
 
-vkit 是一个面向计算机视觉开发者，特别是文档图像分析与识别方向开发者的工具包，特性如下：
+[vkit](https://github.com/vkit-dev/vkit) 是一个面向计算机视觉（特别是文档图像分析与识别方向）开发者的工具包，特性如下：
 
 * 丰富的数据增强策略
-  * 支持常见的光度畸变策略，如各类色彩空间操作、各类噪音
-  * 支持常见的几何畸变策略，如各类仿射变换、各类非线性变换（如 Similarity MLS，基于相机模型的 3D 曲面、翻折效果等）
-  * 支持图片与各种标注数据类型的一致变换
-* 较为全面的数据类型封装支持
-  * 如图片（image）、蒙板（mask）、评分图（score map）、框（box）、多边形（polygon） 等类型
-* 面向文档图像分析与识别方向用户的数据方案 🚧
+  * 支持常见的光度畸变策略，如各类色彩空间操作、各类噪音操作
+  * ⭐ 支持常见的几何畸变策略，如各类仿射变换、各类非线性变换（如 Similarity MLS，基于相机模型的 3D 曲面、翻折效果等）
+  * ⭐ 支持在几何畸变过程中，图片与各种标注数据类型的一致变换。例如，在旋转图片的同时，vkit 也可以同时旋转关联标注的位置信息
+* 较为全面的数据类型封装与可视化支持
+  * 图片类型（基于 PIL 的封装，支持各类图片的读写）
+  * 标注类型：蒙板（mask）、评分图（score map）、框（box）、多边形（polygon） 等
+* 面向文档图像分析与识别方向用户的数据方案
+  *  🚧
+
 * 工业级代码质量
-  * 友好的代码自动补全与类型检查支持
+  * 友好的代码自动补全与类型检查支持，为开发体验保驾护航
+  * 成熟的包管理与依赖管理机制
   * 自动化风格检查（基于 flake8）与静态类型分析（基于 pyright）
   * 完善的自动化测试流程 🚧
 
-注：🚧 表示施工中，未完全支持
+注：
 
-笔者希望可以通过 vkit：
+* 🚧 表示施工中，未完全支持
+* ⭐ 表示本项目的亮点（其他项目没有，或是做得不够好的地方）
 
-* 将开发者从繁琐的数据治理细节中解放出来，将时间放在更有价值的部分，如数据治理策略、算法模型设计与调优等
-* 整合常见的数据增强策略，构建工业级场景数据方案（即那些工业算法落地的 "secret sauce"）
-* 基于 vkit 构建工业级开源文档图像分析与识别解决方案
+## 项目愿景
+
+作者作为一名 CV/NLP 算法工程师，希望可以通过 vkit 这个项目，从以下几个方面给大家提供便利：
+
+* 将开发者从繁琐的数据治细节中解放出来，将宝贵的时间放在更有价值的工作上，如数据治理策略、算法模型设计与调优等
+* 整合常见的数据增强策略，助力文档图像分析与识别方向的科研工作、构建工业级场景数据方案（即工业界算法落地所需的那点 "secret sauce"）
+* 构建工业级开源文档图像分析与识别解决方案（如扭曲复原、超分辨率、OCR、版面分析等）
 
 ## 安装
 
@@ -73,8 +93,13 @@ pip install python-vkit
 ## 近期计划
 
 * 0.1.0
-  - [ ] 使用文档
   - [x] 支持 Python 3.9
+  - [x] 支持 Python 3.8
+  - [x] 图片类型封装
+  - [x] 标注类型封装
+  - [x] 常见的光度畸变
+  - [x] 常见的几何畸变
+  - [ ] 使用文档
 * 0.2.0
   - [ ] 使用文档（英文）
   - [ ] 完整 CI 测试流程
@@ -91,13 +116,13 @@ pip install python-vkit
 * 使用疑问、需求讨论等请移步 [Discussions](https://github.com/vkit-dev/vkit/discussions)
 * 报 Bug 请移步 [Issues](https://github.com/vkit-dev/vkit/issues)
 
-作者平日工作繁忙，只能在业余支持本项目，响应或有不及时等情况，请多多担待
+作者平日工作繁忙，只能在业余支持本项目，或有响应不及时的情况，请多多担待
 
 ## 赞助
 
-赞助体系正在规划中，会在项目成长到一定阶段推出
+赞助体系正在规划中，会在项目成长到一定阶段后推出
 
-如果本项目省了您的时间，可以考虑一下请我喝杯咖啡😄
+就目前而言，如果您觉得本项目对您产生了实质性的帮助，可以考虑请我喝杯咖啡，交个朋友😄
 
 <div align="center">
     <img alt="爱发电.jpg" width="400" src="https://i.loli.net/2021/11/28/xkQ3DFws9W1fBg4.jpg">
@@ -112,7 +137,7 @@ pip install python-vkit
 ## 几何畸变
 
 
-### 接口使用
+### 几何畸变接口说明
 
 Import 示例:
 
@@ -152,13 +177,13 @@ def distort(
 
 其中：
 
-* `config_or_config_generator`：几何畸变配置，或者一个生成配置的函数。每种几何畸变的操作，都有对应的独立配置类型，如 `camera_cubic_curve` 对应 `CameraCubicCurveConfig`
+* `config_or_config_generator`：传入几何畸变配置，或者传入一个生成配置的函数。每种几何畸变的操作，都有对应的独立配置类型，如 `camera_cubic_curve` 对应 `CameraCubicCurveConfig`
 * `image`：需要进行几何畸变的图片
 * `image_mask`, `image_score_map` 等皆为可选项，会对传入对象执行与 `image` 一致的几何畸变
 * `get_active_image_mask`：如果设置，会在结果中返回 `active_image_mask` 蒙板，用于表示变换后属于原图的激活区域
 * `get_config`：如果设置，会在结果中返回配置实例
 * `get_state`：如果设置，会在结果中返回状态实例
-* `rnd`：`np.random.RandomState` 实例，用于生成配置或者其他需要随机行为的操作
+* `rnd`：`numpy.random.RandomState` 实例，用于生成配置或者其他需要随机行为的操作
 
 `GeometricDistortion.distort` 接口返回类型：
 
@@ -213,7 +238,7 @@ def run(image_file, output_file):
 可以通过 `fireball` (`pip install fireball`) 直接调用以上示例：
 
 ```bash
-fib vkit_case.vkit_doc_helper.demo:run \
+fib vkit_case.vkit_doc_helper.demo_geo:run \
     --image_file="REQUIRED" \
     --output_file="REQUIRED"
 ```
@@ -225,6 +250,7 @@ fib vkit_case.vkit_doc_helper.demo:run \
 	<img alt="demo_output.png" src="https://i.loli.net/2021/11/25/Ww7yr3a25H4sUgN.png">
 </div>
 下面是几何畸变的具体实现
+
 
 ### camera_cubic_curve
 
@@ -560,11 +586,347 @@ class SkewVertConfig:
 
 
 
-
-
-
-
 ## 光度畸变
+
+
+### 光度畸变接口说明
+
+Import 示例:
+
+```python
+from vkit.augmentation.photometric_distortion import (
+    PhotometricDistortion,
+)
+```
+
+`PhotometricDistortion.distort_image` 接口：
+
+```python
+def distort_image(
+    self,
+    config_or_config_generator: Union[T_CONFIG,
+                                      Callable[[Tuple[int, int], np.random.RandomState],
+                                               T_CONFIG]],
+    image: VImage,
+    rnd: Optional[np.random.RandomState] = None,
+) -> VImage:
+    ...
+```
+
+其中：
+
+* `config_or_config_generator`：传入光度畸变配置，或者传入一个生成配置的函数。每种光度畸变的操作，都有对应的独立配置类型，如 `mean_shift` 对应 `MeanShiftConfig`
+
+* `image`：需要进行光度畸变的图片
+* `rnd`：`numpy.random.RandomState` 实例，用于生成配置或者其他需要随机行为的操作
+
+与几何畸变不同的是，光度畸变并不会改变图片中元素的位置，所以并没有对标注类型（如 `VImageMask`）的处理接口。`distort_image` 的函数名也比较明确，即光度畸变的处理对象是图片，返回被处理过的新图片
+
+简单的可执行调用示例：
+
+```python
+from vkit.image.type import VImage
+from vkit.augmentation.photometric_distortion import (
+    MeanShiftConfig,
+    mean_shift,
+)
+
+
+def run(image_file, output_file):
+    image = VImage.from_file(image_file)
+
+    config = MeanShiftConfig(delta=100)
+    new_image = mean_shift.distort_image(config, image)
+
+    new_image.to_file(output_file)
+```
+
+可以通过 `fireball` (`pip install fireball`) 直接调用以上示例：
+
+```bash
+fib vkit_case.vkit_doc_helper.demo_pho:run \
+    --image_file="REQUIRED" \
+    --output_file="REQUIRED"
+```
+
+以下是示例输入与输出：
+
+<div align="center">
+    <img alt="Lenna.png" src="https://i.loli.net/2021/11/25/HFaygJjhuI2OxU1.png">
+	<img alt="demo_output.png" src="https://i.loli.net/2021/11/28/LAvGD7lrkqpa2co.png">
+</div>
+
+下面是光度畸变的具体实现
+### mean_shift
+
+描述：调整每个通道的均值。即通俗说法中的亮度调整
+
+import:
+
+```python
+from vkit.augmentation.photometric_distortion import (
+    MeanShiftConfig,
+    mean_shift,
+)
+```
+
+配置：
+
+```python
+@attr.define
+class MeanShiftConfig:
+    delta: int
+```
+
+其中：
+
+* `delta`: 相加用的值。已经考虑   `uint8`  overflow/underflow 的问题
+
+效果示例：
+
+<div align="center"><img alt="brightness_shift.gif" src="https://i.loli.net/2021/11/28/QZAsdRmTYJcjG1K.gif"></div>
+
+### std_shift
+
+描述：调整每个通道的标准差，同时保持通道的均值。即通俗说法中的对比度调整
+
+import:
+
+```python
+from vkit.augmentation.photometric_distortion import (
+    StdShiftConfig,
+    std_shift,
+)
+```
+
+配置：
+
+```python
+@attr.define
+class StdShiftConfig:
+    scale: float
+```
+
+其中：
+
+* `scale`: 相乘用的值。已经考虑   `uint8`  overflow/underflow 的问题
+
+效果示例：
+
+<div align="center"><img alt=".gif" src="https://i.loli.net/2021/11/28/zaW1KCeLxgs4Yop.gif"></div>
+
+### channel_permutate
+
+描述：随机重组通道的顺序
+
+import:
+
+```python
+from vkit.augmentation.photometric_distortion import (
+    ChannelPermutateConfig,
+    channel_permutate,
+)
+```
+
+配置：
+
+```python
+@attr.define
+class ChannelPermutateConfig:
+    rnd_state: Any = None
+```
+
+其中：
+
+* `rnd_state`: 可选，类型与  `numpy.random.RandomState.get_state()` 的返回值一致，用于初始化 `numpy.random.RandomState`。默认情况会随机初始化
+
+效果示例：
+
+<div align="center"><img alt="channel_permutate.gif" src="https://i.loli.net/2021/11/28/ySkFD7YXbtul2Ji.gif"></div>
+
+### hue_shift
+
+描述：调整 HSV 色彩空间中的色调（hue）值。注意传入的图片的模式需要是 HSV
+
+import:
+
+```python
+from vkit.augmentation.photometric_distortion import (
+    HueShiftConfig,
+    hue_shift,
+)
+```
+
+配置：
+
+```python
+@attr.define
+class HueShiftConfig:
+    delta: int
+```
+
+其中：
+
+* `delta`: 色调相加的值。会通过取 mod 的模式处理 overflow/underflow 问题
+
+效果示例：
+
+<div align="center"><img alt="hue_shift.gif" src="https://i.loli.net/2021/11/29/JSTem4yocrB1WUs.gif"></div>
+
+### saturation_shift
+
+描述：调整 HSV 色彩空间中的饱和度（saturation）值。注意传入的图片的模式需要是 HSV
+
+import:
+
+```python
+from vkit.augmentation.photometric_distortion import (
+    SaturationShiftConfig,
+    saturation_shift,
+)
+```
+
+配置：
+
+```python
+@attr.define
+class SaturationShiftConfig:
+    delta: int
+```
+
+其中：
+
+* `delta`: 饱和度相加的值
+
+效果示例：
+
+<div align="center"><img alt="saturation_shift.gif" src="https://i.loli.net/2021/11/29/ON8jEdIbmWX1VFo.gif"></div>
+
+
+### gaussion_noise
+
+描述：叠加高斯噪音
+
+import:
+
+```python
+from vkit.augmentation.photometric_distortion import (
+    GaussionNoiseConfig,
+    gaussion_noise,
+)
+```
+
+配置：
+
+```python
+@attr.define
+class GaussionNoiseConfig:
+    std: float
+    rnd_state: Any = None
+```
+
+其中：
+
+* `std`:  高斯噪音标准差
+
+效果示例：
+
+<div align="center"><img alt="gaussion_noise.gif" src="https://i.loli.net/2021/11/29/RLKcgotJbe3hqyf.gif"></div>
+
+### poisson_noise
+
+描述：叠加泊松噪音
+
+import:
+
+```python
+from vkit.augmentation.photometric_distortion import (
+    PoissonNoiseConfig,
+    poisson_noise,
+)
+```
+
+配置：
+
+```python
+@attr.define
+class PoissonNoiseConfig:
+    rnd_state: Any = None
+```
+
+其中：没有可以配置的选项，除了随机生成器的状态
+
+效果示例：
+
+<div align="center"><img alt="poisson_noise.gif" src="https://i.loli.net/2021/11/29/kcRW5hGMNTus9X3.gif"></div>
+
+### impulse_noise
+
+描述：叠加脉冲噪声
+
+import:
+
+```python
+from vkit.augmentation.photometric_distortion import (
+    ImpulseNoiseConfig,
+    impulse_noise,
+)
+```
+
+配置：
+
+```python
+@attr.define
+class ImpulseNoiseConfig:
+    prob_salt: float
+    prob_pepper: float
+    rnd_state: Any = None
+```
+
+其中：
+
+* `prob_salt`: 产生白色噪点（salt）的概率
+* `prob_pepper`：产生黑色早点（pepper）的概率
+
+效果示例：
+
+<div align="center"><img alt="impulse_noise.gif" src="https://i.loli.net/2021/11/29/BEmACUx9ip1DeHK.gif"></div>
+
+### speckle_noise
+
+描述：叠加斑点噪声
+
+import:
+
+```python
+from vkit.augmentation.photometric_distortion import (
+    SpeckleNoiseConfig,
+    speckle_noise,
+)
+```
+
+配置：
+
+```python
+@attr.define
+class SpeckleNoiseConfig:
+    std: float
+    rnd_state: Any = None
+```
+
+其中：
+
+* `std`:  高斯斑点标准差
+
+效果示例：
+
+<div align="center"><img alt="speckle_noise.gif" src="https://i.loli.net/2021/11/29/VrQuO7GtkCzd9yE.gif"></div>
+
+### 
+
+
+
+
 
 ## 图像类型
 
