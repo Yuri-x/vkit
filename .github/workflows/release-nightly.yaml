@@ -15,7 +15,6 @@ jobs:
           - "quay.io/pypa/manylinux_2_24_x86_64"
         python_abi:
           - "cp38-cp38"
-          - "cp39-cp39"
 
     container:
       image: ${{ matrix.image }}
