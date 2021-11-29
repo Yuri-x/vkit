@@ -1,5 +1,6 @@
-from typing import Any, Optional, Dict, List, Tuple, Iterable
+from typing import Any, Optional, Dict, List, Sequence, Tuple, Iterable
 import enum
+import copy
 
 import attr
 import numpy as np
@@ -51,11 +52,11 @@ class VPointList(List[VPoint]):
         return points
 
     @staticmethod
-    def from_xy_pairs(xy_pairs):
+    def from_xy_pairs(xy_pairs: Iterable[Tuple[int, int]]):
         return VPointList(VPoint(y=y, x=x) for x, y in xy_pairs)
 
     @staticmethod
-    def from_flatten_xy_pairs(flatten_xy_pairs):
+    def from_flatten_xy_pairs(flatten_xy_pairs: Sequence[int]):
         # [x0, y0, x1, y1, ...]
         flatten_xy_pairs = tuple(flatten_xy_pairs)
         assert flatten_xy_pairs and len(flatten_xy_pairs) % 2 == 0
@@ -73,6 +74,12 @@ class VPointList(List[VPoint]):
     @staticmethod
     def from_point(point: VPoint):
         return VPointList((point,))
+
+    def clone(self):
+        points = VPointList()
+        for point in self:
+            points.append(point.clone())
+        return points
 
     def to_xy_pairs(self):
         return [point.to_xy_pair() for point in self]
@@ -109,6 +116,17 @@ class VBox:
     def shape(self):
         return self.height, self.width
 
+    def to_clipped_box(self, image: VImage):
+        return VBox(
+            up=np.clip(self.up, 0, image.height - 1),
+            down=np.clip(self.down, 0, image.height - 1),
+            left=np.clip(self.left, 0, image.width - 1),
+            right=np.clip(self.right, 0, image.width - 1),
+        )
+
+    def clone(self):
+        return attr.evolve(self)
+
     def extract_image(self, image: VImage):
         return attr.evolve(
             image,
@@ -128,11 +146,11 @@ class VPolygon:
         return VPolygon(points=VPointList.from_np_array(np_points))
 
     @staticmethod
-    def from_xy_pairs(xy_pairs):
+    def from_xy_pairs(xy_pairs: Iterable[Tuple[int, int]]):
         return VPolygon(points=VPointList.from_xy_pairs(xy_pairs))
 
     @staticmethod
-    def from_flatten_xy_pairs(flatten_xy_pairs):
+    def from_flatten_xy_pairs(flatten_xy_pairs: Sequence[int]):
         return VPolygon(points=VPointList.from_flatten_xy_pairs(flatten_xy_pairs))
 
     def to_xy_pairs(self):
@@ -147,7 +165,7 @@ class VPolygon:
     def to_clipped_polygon(self, image: VImage):
         return VPolygon(points=self.to_clipped_points(image))
 
-    def to_bounding_box_with_np_points(self, shift_np_points=False):
+    def to_bounding_box_with_np_points(self, shift_np_points: bool = False):
         xy_pairs = self.to_xy_pairs()
 
         x_min = xy_pairs[0][0]
@@ -169,8 +187,8 @@ class VPolygon:
         bounding_box = VBox(up=y_min, down=y_max, left=x_min, right=x_max)
         return bounding_box, np_points
 
-    def to_bounding_box(self, shift_np_points=False):
-        bounding_box, _ = self.to_bounding_box_with_np_points(shift_np_points=shift_np_points)
+    def to_bounding_box(self):
+        bounding_box, _ = self.to_bounding_box_with_np_points()
         return bounding_box
 
     def to_rescaled_polygon(
@@ -182,6 +200,9 @@ class VPolygon:
         return VPolygon(
             points=self.points.to_rescaled_points(image, rescaled_height, rescaled_width)
         )
+
+    def clone(self):
+        return VPolygon(points=self.points.clone())
 
 
 @attr.define
@@ -201,6 +222,13 @@ class VTextPolygon:
     ):
         new_polygon = self.polygon.to_rescaled_polygon(image, rescaled_height, rescaled_width)
         return attr.evolve(self, polygon=new_polygon)
+
+    def clone(self):
+        return attr.evolve(
+            self,
+            polygon=self.polygon.clone(),
+            meta=None if not self.meta else copy.deepcopy(self.meta),
+        )
 
 
 def extract_rect_area(mat: npt.NDArray, polygon: VPolygon):
@@ -237,7 +265,7 @@ class VImageMask:
             raise RuntimeError('ndim should == 2.')
 
     @staticmethod
-    def from_shape(height, width):
+    def from_shape(height: int, width: int):
         mat = np.zeros((height, width), dtype=np.uint8)
         return VImageMask(mat=mat)
 
@@ -291,9 +319,17 @@ class VImageMask:
     def shape(self):
         return self.height, self.width
 
-    def to_rescaled_image_mask(self, height, width):
-        mat = cv.resize(self.mat, (width, height), cv.INTER_NEAREST_EXACT)
+    def to_rescaled_image_mask(
+        self,
+        height: int,
+        width: int,
+        cv_resize_interpolation: int = cv.INTER_NEAREST_EXACT,
+    ):
+        mat = cv.resize(self.mat, (width, height), cv_resize_interpolation)
         return VImageMask(mat=mat)
+
+    def clone(self):
+        return attr.evolve(self, mat=self.mat.copy())
 
 
 @attr.define
@@ -348,3 +384,6 @@ class VImageScoreMap:
     def to_rescaled_image_score_map(self, height, width):
         mat = cv.resize(self.mat, (width, height), cv.INTER_LINEAR)
         return VImageScoreMap(mat=mat)
+
+    def clone(self):
+        return attr.evolve(self, mat=self.mat.copy())

@@ -1,4 +1,5 @@
-from enum import Enum
+from enum import Enum, auto
+from typing import Dict, Sequence
 
 import attr
 import numpy as np
@@ -10,14 +11,14 @@ from vkit.type import PathType
 
 
 class VImageKind(Enum):
-    RGB = 'rgb'
-    RGB_GCN = 'rgb-gcn'
-    RGBA = 'rgba'
-    HSV = 'hsv'
-    HSV_GCN = 'hsv-gcn'
-    GRAYSCALE = 'grayscale'
-    GRAYSCALE_GCN = 'grayscale-gcn'
-    NONE = 'none'
+    RGB = auto()
+    RGB_GCN = auto()
+    RGBA = auto()
+    HSV = auto()
+    HSV_GCN = auto()
+    GRAYSCALE = auto()
+    GRAYSCALE_GCN = auto()
+    NONE = auto()
 
     @staticmethod
     def to_ndim(image_kind: 'VImageKind'):
@@ -222,50 +223,6 @@ class VImage:
     def to_pil_image(self):
         return Image.fromarray(self.mat)
 
-    def to_rgb_image(self):
-        image = self
-        skip_clone = False
-        if VImageKind.is_gcn(image.kind):
-            image = image.to_non_gcn_image()
-            skip_clone = True
-
-        if image.kind == VImageKind.RGB:
-            return image if skip_clone else image.clone()
-
-        elif image.kind == VImageKind.HSV:
-            # NOTE: H range [0, 255]
-            mat = cv.cvtColor(image.mat, cv.COLOR_HSV2RGB_FULL)
-            return VImage(mat=mat, kind=VImageKind.RGB)
-
-        elif image.kind == VImageKind.GRAYSCALE:
-            mat = cv.cvtColor(image.mat, cv.COLOR_GRAY2RGB)
-            return VImage(mat=mat, kind=VImageKind.RGB)
-
-        else:
-            raise NotImplementedError()
-
-    def to_hsv_image(self):
-        image = self
-        skip_clone = False
-        if VImageKind.is_gcn(image.kind):
-            image = image.to_non_gcn_image()
-            skip_clone = True
-
-        if image.kind == VImageKind.HSV:
-            return image if skip_clone else image.clone()
-
-        elif image.kind == VImageKind.RGB:
-            # NOTE: H range [0, 255]
-            mat = cv.cvtColor(image.mat, cv.COLOR_RGB2HSV_FULL)
-            return VImage(mat=mat, kind=VImageKind.HSV)
-
-        elif image.kind == VImageKind.GRAYSCALE:
-            mat = cv.cvtColor(image.mat, cv.COLOR_GRAY2RGB)
-            return VImage(mat=mat, kind=VImageKind.RGB).to_hsv_image()
-
-        else:
-            raise NotImplementedError()
-
     def to_gcn_image(self, lamb=0, eps=1E-8, scale=1.0):
         # Global contrast normalization.
         # https://cedar.buffalo.edu/~srihari/CSE676/12.2%20Computer%20Vision.pdf
@@ -299,12 +256,85 @@ class VImage:
 
         return VImage(mat=mat, kind=kind)
 
-    def to_rescaled_image(self, height: int, width: int, cv_resize_interpolation=cv.INTER_CUBIC):
+    @staticmethod
+    def convert_image_kind(
+        image: 'VImage',
+        new_kind: VImageKind,
+        kind_to_cv_color_codes: Dict[VImageKind, Sequence[int]],
+    ):
+        assert new_kind not in kind_to_cv_color_codes
+
+        skip_clone = False
+        if VImageKind.is_gcn(image.kind):
+            image = image.to_non_gcn_image()
+            skip_clone = True
+
+        if image.kind == new_kind:
+            return image if skip_clone else image.clone()
+
+        if image.kind in kind_to_cv_color_codes:
+            new_mat = image.mat
+            for cv_color_code in kind_to_cv_color_codes[image.kind]:
+                new_mat = cv.cvtColor(new_mat, cv_color_code)
+            return VImage(mat=new_mat, kind=new_kind)
+        else:
+            raise NotImplementedError(f'{image.kind} -> {new_kind} not supported.')
+
+    def to_grayscale_image(self):
+        return self.convert_image_kind(
+            self,
+            VImageKind.GRAYSCALE,
+            {
+                VImageKind.RGB: [cv.COLOR_RGB2GRAY],
+                VImageKind.RGBA: [cv.COLOR_RGBA2GRAY],
+                VImageKind.HSV: [cv.COLOR_HSV2RGB_FULL, cv.COLOR_RGB2GRAY],
+            },
+        )
+
+    def to_rgb_image(self):
+        return self.convert_image_kind(
+            self,
+            VImageKind.RGB,
+            {
+                VImageKind.GRAYSCALE: [cv.COLOR_GRAY2RGB],
+                VImageKind.RGBA: [cv.COLOR_RGBA2RGB],
+                VImageKind.HSV: [cv.COLOR_HSV2RGB_FULL],
+            },
+        )
+
+    def to_rgba_image(self):
+        return self.convert_image_kind(
+            self,
+            VImageKind.RGBA,
+            {
+                VImageKind.GRAYSCALE: [cv.COLOR_GRAY2RGBA],
+                VImageKind.RGB: [cv.COLOR_RGB2RGBA],
+                VImageKind.HSV: [cv.COLOR_HSV2RGB_FULL, cv.COLOR_RGB2RGBA],
+            },
+        )
+
+    def to_hsv_image(self):
+        return self.convert_image_kind(
+            self,
+            VImageKind.HSV,
+            {
+                VImageKind.RGB: [cv.COLOR_RGB2HSV_FULL],
+                VImageKind.RGBA: [cv.COLOR_RGBA2RGB, cv.COLOR_RGB2HSV_FULL],
+                VImageKind.GRAYSCALE: [cv.COLOR_GRAY2RGB, cv.COLOR_RGB2HSV_FULL],
+            },
+        )
+
+    def to_rescaled_image(
+        self,
+        height: int,
+        width: int,
+        cv_resize_interpolation: int = cv.INTER_CUBIC,
+    ):
         mat = cv.resize(self.mat, (width, height), cv_resize_interpolation)
         return attr.evolve(self, mat=mat)
 
     @staticmethod
-    def from_file(path: PathType, disable_exif_orientation=False):
+    def from_file(path: PathType, disable_exif_orientation: bool = False):
         pil_img = Image.open(path)  # type: ignore
         pil_img.load()
 
@@ -317,14 +347,25 @@ class VImage:
 
         return VImage.from_pil_image(pil_img)
 
-    def to_file(self, path: PathType):
-        pil_img = self.to_rgb_image().to_pil_image()
+    def to_file(self, path: PathType, disable_to_rgb_image: bool = False):
+        image = self
+        if not disable_to_rgb_image:
+            image = image.to_rgb_image()
+
+        pil_img = image.to_pil_image()
         pil_img.save(path)  # type: ignore
 
 
 def debug():
     from vkit.opt import get_data_folder
     folder = get_data_folder(__file__)
+
+    VImage.from_file(f'{folder}/Lenna.png').to_grayscale_image().to_file(
+        f'{folder}/Lenna-gray.png', disable_to_rgb_image=True
+    )
+    VImage.from_file(f'{folder}/Lenna.png').to_rgba_image().to_file(
+        f'{folder}/Lenna-rgba.png', disable_to_rgb_image=True
+    )
 
     VImage.from_file(f'{folder}/Lenna.png').to_gcn_image().to_file(f'{folder}/Lenna-gcn.png')
     VImage.from_file(f'{folder}/contrast_0.5-gcn.png'

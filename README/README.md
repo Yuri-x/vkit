@@ -99,11 +99,13 @@ pip install python-vkit
 ```vkit-doc
 [[ref]]
 path = "../vkit/augmentation/README/README.md"
+
+[[ref]]
+path = "../vkit/image/README/README.md"
+
+[[ref]]
+path = "../vkit/label/README/README.md"
 ```
-
-## 图像类型
-
-## 标注类型
 
 # vkit 数据方案
 
