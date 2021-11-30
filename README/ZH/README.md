@@ -94,13 +94,13 @@ pip install python-vkit
 
 ```vkit-doc
 [[ref]]
-path = "../vkit/augmentation/README/README.md"
+path = "../../vkit/augmentation/README/ZH/README.md"
 
 [[ref]]
-path = "../vkit/image/README/README.md"
+path = "../../vkit/image/README/ZH/README.md"
 
 [[ref]]
-path = "../vkit/label/README/README.md"
+path = "../../vkit/label/README/ZH/README.md"
 ```
 
 # vkit 数据方案

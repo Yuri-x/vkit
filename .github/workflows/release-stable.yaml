@@ -89,7 +89,7 @@ jobs:
       - name: Doc checking
         if: ${{ env.ABORT_RELEASE != 1 }}
         run: |
-          vkit-doc-tool README/README.md README_CI.md
+          vkit-doc-tool README/ZH/README.md README_CI.md
           diff README.md README_CI.md || exit 1
 
       - name: Build wheel & publish (stable).

@@ -75,5 +75,5 @@ jobs:
 
       - name: Doc checking
         run: |
-          vkit-doc-tool README/README.md README_CI.md
+          vkit-doc-tool README/ZH/README.md README_CI.md
           diff README.md README_CI.md || exit 1
