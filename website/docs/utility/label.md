@@ -1,14 +1,14 @@
-# 标注类型
+# label data type
 
 ## VPoint
 
-import：
+import:
 
 ```python
 from vkit.label.type import VPoint
 ```
 
-`VPoint` 用于表示二维平面上的点：
+`VPoint` represents a point on 2D plane：
 
 ```python
 @attr.define
@@ -17,49 +17,49 @@ class VPoint:
     x: int
 ```
 
-`VPoint` 的方法：
+Methods available in `VPoint`:
 
-* `self.clone()` ：返回拷贝
-* `self.to_xy_pair()`：返回 `(x, y)`
-* `self.to_clipped_point(image: VImage)`：生成新的 `VPoint` ，通过 clip 操作保证不会出现位置的 overflow/underflow
-* `self.to_rescaled_point(image: VImage, rescaled_height: int, rescaled_width: int)`：基于目标缩放图片的高度与宽度，生成新的 `VPoint`。`image` 是缩放前图片，`rescaled_height` 与 `rescaled_width` 是缩放后的图片高度与宽度
+* `self.clone()`: returns a copy of the object
+* `self.to_xy_pair()`: returns a tuple as `(x, y)`
+* `self.to_clipped_point(image: VImage)`: generates a new `VPoint`, ensure no positional overflow/underflow would take place via clip operation
+* `self.to_rescaled_point(image: VImage, rescaled_height: int, rescaled_width: int)`: Generates new `VPoint` based on rescaled target image's height and width. `image` represents the original image, `rescaled_height` and `rescaled_width` is the desired rescaled image's height and width respectively
 
 ## VPointList
 
-import：
+import:
 
 ```python
 from vkit.label.type import VPointList
 ```
 
-`VPointList` 用于表示 `VPoint` 数组：
+`VPointList` is used to represent a list of `VPoint`：
 
 ```python
 class VPointList(List[VPoint]):
     ...
 ```
 
-`VPointList` 的方法：
+Methods available in `VPointList`：
 
-* `VPointList.from_np_array(np_points: npt.NDArray)`：将 numpy array `(*, 2)` （`[(x, y), ...]`）转换为 `VPointList`
-* `VPointList.from_xy_pairs(xy_pairs: Iterable[Tuple[int, int]])`： 将 `Iterable[Tuple[int, int]]` 转换为  `VPointList`
-* `VPointList.from_flatten_xy_pairs(flatten_xy_pairs: Sequence[int])`：类似 `VPointList.from_xy_pairs`，但输入形式为 `[x0, y0, x1, y1, ...]`
-* `VPointList.from_point(point: VPoint)`：返回包含 `point` 为唯一元素的 `VPointList`
-* `self.clone()`：返回拷贝
-* `self.to_xy_pairs()`：转换为 `List[Tuple[int, int]]` 格式，即 `VPointList.from_xy_pairs` 的逆过程
-* `self.to_np_array()`：转换为 numpy array，即 `VPointList.from_np_array` 的逆过程
-* `self.to_clipped_points(image: VImage)`：生成新的 `VPointList` ，通过 clip 操作保证不会出现位置的 overflow/underflow
-* `self.to_rescaled_points(image: VImage, rescaled_height: int, rescaled_width: int)`：基于目标缩放图片的高度与宽度，生成新的 `VPointList`。`image` 是缩放前图片，`rescaled_height` 与 `rescaled_width` 是缩放后的图片高度与宽度
+* `VPointList.from_np_array(np_points: npt.NDArray)`: converts a numpy array with shape `(*, 2)` (`[(x, y), ...]`) into a `VPointList` object
+* `VPointList.from_xy_pairs(xy_pairs: Iterable[Tuple[int, int]])`: converts an `Iterable[Tuple[int, int]]` into a `VPointList` object
+* `VPointList.from_flatten_xy_pairs(flatten_xy_pairs: Sequence[int])`: similar to `VPointList.from_xy_pairs`, however accepts the input in the format of `[x0, y0, x1, y1, ...]`
+* `VPointList.from_point(point: VPoint)`: Returns a `VPointList` which contains the specified `point` object alone
+* `self.clone()`: returns a copy of the object
+* `self.to_xy_pairs()`: converts the `VPointList` into `List[Tuple[int, int]]`, aka the reverse operation of `VPointList.from_xy_pairs`
+* `self.to_np_array()`: converts the `VPointList` into a numpy array, aka the reverse operation of `VPointList.from_np_array`
+* `self.to_clipped_points(image: VImage)`: generates a new `VPointList` object, ensures no positional overflow/underflow via clip operation
+* `self.to_rescaled_points(image: VImage, rescaled_height: int, rescaled_width: int)`: Generates a new `VPointList` based on rescaled target image's height and width. `image` represents the original image, `rescaled_height` and `rescaled_width` is the desired rescaled image's height and width respectively
 
 ## VBox
 
-import：
+import:
 
 ```python
 from vkit.label.type import VBox
 ```
 
-`VBox` 用于表示横平竖直的矩形标注区域：
+`VBox` is used to represent rectangular labeled area which is horizontal and vertical
 
 ```python
 @attr.define
@@ -70,31 +70,35 @@ class VBox:
     right: int
 ```
 
-其中：
+Explanation:
 
-* `down` 与 `right` 的表示是闭区间端点
+* `up` and `left` represents the coordinate of the top left corner
+* `up` and `right` represents the coordinate of the top right corner
+* `down` and `left` represents the coordinate of the bottom left corner
+* `down` and `right` represents the coordinate of the bottom right corner
+* VBox is therefore a rectangular enclosed by the 4 points mentioned above
 
-`VBox` 的属性：
+attributes of `VBox`:
 
-* `height`：高度，类型 `int`
-* `width`：宽度，类型 `int`
-* `shape`：（高度，宽度），类型 `Tuple[int, int]`
+* `height`: type `int`
+* `width`: type `int`
+* `shape`: (height, width), type `Tuple[int, int]`
 
-`VBox`  的方法：
+Methods available for `VBox`:
 
-* `self.clone()`：返回拷贝
-* `self.to_clipped_box(image: VImage)`：生成新的 `VBox` ，通过 clip 操作保证不会出现位置的 overflow/underflow
-* `self.extract_image(image: VImage)`：从 `image` 中抽取 `VBox`  划定的区域，返回一个新的 `VImage`。需要注意，这个操作不会产生一个新的 numpy array，如有需要得显式地调用 `clone`
+* `self.clone()`: Creates a copy of the `VBox`
+* `self.to_clipped_box(image: VImage)`: generates a new `VBox` object, ensures no positional overflow/underflow via clip operation
+* `self.extract_image(image: VImage)`: extracts part of a `image` surrounded by a `VBox` object, returns a `VImage` object. Note that this method will not generate a new numpy array, therefore explicit `clone` is required
 
 ## VPolygon
 
-import：
+import:
 
 ```python
 from vkit.label.type import VPolygon
 ```
 
-`VPolygon` 用于表示多边形标注区域：
+`VPolygon` represents a polygon shaped area
 
 ```python
 @attr.define
@@ -102,27 +106,27 @@ class VPolygon:
     points: VPointList
 ```
 
-`VPolygon` 的方法：
+Methods available for `VPolygon`:
 
-* `VPolygon.from_np_array(np_points: npt.NDArray)`：调用 `VPointList.from_np_array` 生成 `self.points`
-* `VPolygon.from_xy_pairs(xy_pairs)`：调用 `VPointList.from_xy_pairs` 生成 `self.points`
-* `VPolygon.from_flatten_xy_pairs(xy_pairs: Sequence[int])`：调用 `VPointList.from_flatten_xy_pairs` 生成 `self.points`
-* `self.to_xy_pairs()`、`self.to_np_array()`、`self.to_clipped_points` 皆在内部调用 `VPointList` 同名方法，生成同样类型的输出
-* `self.to_clipped_polygon()` 与 `self.to_clipped_points()`，区别在于返回 `VPolygon`
-* `self.to_bounding_box_with_np_points(shift_np_points: bool = False)`：返回 `Tuple[VBox, npt.NDArray]` ，即外接矩形 `VBox` 与转为 numpy array 格式的  `self.points`。如果将 `shift_np_points` 设为 `True`，则会将 numpy array 中离原点最近的点设为原点（shift 至 `(0, 0)`）
-* `self.to_bounding_box()`：返回 `self.to_bounding_box_with_np_points` 中的 `VBox`
-* `self.to_rescaled_polygon(image: VImage, rescaled_height: int, rescaled_width: int)`：基于目标缩放图片的高度与宽度，生成新的 `VPolygon`。`image` 是缩放前图片，`rescaled_height` 与 `rescaled_width` 是缩放后的图片高度与宽度
-* `self.clone()`：返回拷贝
+* `VPolygon.from_np_array(np_points: npt.NDArray)`: calls `VPointList.from_np_array` to generate `self.points`
+* `VPolygon.from_xy_pairs(xy_pairs)`: calls `VPointList.from_xy_pairs` to generate `self.points`
+* `VPolygon.from_flatten_xy_pairs(xy_pairs: Sequence[int])`: calls `VPointList.from_flatten_xy_pairs` to generate`self.points`
+* `self.to_xy_pairs()`, `self.to_np_array()` and `self.to_clipped_points` will all call methods defined in `VPointList` with the same name and output in the same type
+* `self.to_clipped_polygon()` returns `VPolygon` while `self.to_clipped_points()` returns `VPointList`
+* `self.to_bounding_box_with_np_points(shift_np_points: bool = False)`: returns `Tuple[VBox, npt.NDArray]`, which is the bounding `VBox` object and `self.points` converted to a numpy array. If `shift_np_points` was set to `True`, the point that was closest to origin will be the new origin (aka. shift to `(0, 0)`)
+* `self.to_bounding_box()`: returns the `VBox` explained in `self.to_bounding_box_with_np_points`
+* `self.to_rescaled_polygon(image: VImage, rescaled_height: int, rescaled_width: int)`: Generates a new `VPolygon` based on rescaled target image's height and width. `image` represents the original image, `rescaled_height` and `rescaled_width` is the desired rescaled image's height and width respectively
+* `self.clone()`: returns a copy of the object
 
 ## VTextPolygon
 
-import：
+import:
 
 ```python
 from vkit.label.type import VTextPolygon
 ```
 
-`VTextPolygon` 用于表示带文本标注的多边形标注区域：
+`VTextPolygon` represents a polygon area tagged with text label:
 
 ```python
 @attr.define
@@ -132,24 +136,24 @@ class VTextPolygon:
     meta: Optional[Dict[str, Any]] = None
 ```
 
-其中：
+Explanation:
 
-* `text`：必须不为空
-* `meta`：可选。用于存储额外字段
+* `text`: must not be empty or `None`
+* `meta`: Optional, can be used to keep other metadata
 
-`VTextPolygon` 的方法：
+Methods available for `VTextPolygon`:
 
-* `self.to_rescaled_text_polygon(image: VImage, rescaled_height: int, rescaled_width: int)`：基于目标缩放图片的高度与宽度，生成新的 `VTextPolygon`。`image` 是缩放前图片，`rescaled_height` 与 `rescaled_width` 是缩放后的图片高度与宽度
+* `self.to_rescaled_text_polygon(image: VImage, rescaled_height: int, rescaled_width: int)`Generates a new `VTextPolygon` based on rescaled target image's height and width. `image` represents the original image, `rescaled_height` and `rescaled_width` is the desired rescaled image's height and width respectively
 
 ## VImageMask
 
-import：
+import:
 
 ```python
 from vkit.label.type import VImageMask
 ```
 
-`VImageMask` 用于表示蒙板（mask）标注：
+`VImageMask` represents a mask label:
 
 ```python
 @attr.define
@@ -157,33 +161,33 @@ class VImageMask:
     mat: npt.NDArray
 ```
 
-其中：
+Explanation:
 
-* `mat`：`ndim = 2` 且 `dtype = np.uint8`
+* `mat` fulfills `ndim = 2` and `dtype = np.uint8`
 
-`VImageMask` 的属性：
+Attributes of `VImageMask`:
 
-* `height`：高，类型 `int`
-* `width`：宽，类型 `int`
-* `shape`：（高，宽），类型 `Tuple[int, int]`
+* `height`: type `int`
+* `width`: type `int`
+* `shape`: (height, width), type `Tuple[int, int]`
 
-`VImageMask` 的方法：
+Methods available for `VImageMask`:
 
-* `VImageMask.from_shape(height: int, width: int)`：从形状初始化 `VImageMask`，`mat` 初始化为 `0`
-* `VImageMask.from_shape_and_polygons(height: int, width: int, polygons: Iterable[VPolygon], mode: VImageMaskPolygonsMergeMode = VImageMaskPolygonsMergeMode.UNION)`：从形状与多边形初始化 `VImageMask`。默认 `mode == VImageMaskPolygonsMergeMode.UNION` 时，将所有多边形区域设为 `1`；如果  `mode == VImageMaskPolygonsMergeMode.DISTINCT`，只将非相交区域设为 `1`；如果  `mode == VImageMaskPolygonsMergeMode.INTERSECTION`，只将重合区域设为 `1`
-* `VImageMask.from_image_and_polygons(image: VImage, polygons: Iterable[VPolygon], mode: VImageMaskPolygonsMergeMode = VImageMaskPolygonsMergeMode.UNION)`：与 `VImageMask.from_shape_and_polygons` 类似，只不过会采用 `image.shape`
-* `self.to_rescaled_image_mask(height: int, width: int, cv_resize_interpolation: int = cv.INTER_NEAREST_EXACT)`：缩放蒙板的高度与宽度
-* `self.clone()`：返回拷贝
+* `VImageMask.from_shape(height: int, width: int)`: initialise `VImageMask` from `shape`, while all elements in `mat` will be initialised to `0`
+* `VImageMask.from_shape_and_polygons(height: int, width: int, polygons: Iterable[VPolygon], mode: VImageMaskPolygonsMergeMode = VImageMaskPolygonsMergeMode.UNION)`: initialise `VImageMask` from `shape` and one or more `VPolygon`. The default `mode == VImageMaskPolygonsMergeMode.UNION` sets the areas covered by any of the `VPolygon` to `1`; If `mode == VImageMaskPolygonsMergeMode.DISTINCT`, only sets non-overlapping areas to `1`; similarly, if `mode == VImageMaskPolygonsMergeMode.INTERSECTION`, only sets areas where overlap exist to `1`
+* `VImageMask.from_image_and_polygons(image: VImage, polygons: Iterable[VPolygon], mode: VImageMaskPolygonsMergeMode = VImageMaskPolygonsMergeMode.UNION)`: similar to `VImageMask.from_shape_and_polygons`, however `image.shape` will be used instead
+* `self.to_rescaled_image_mask(height: int, width: int, cv_resize_interpolation: int = cv.INTER_NEAREST_EXACT)`: rescale the height and width of the mask
+* `self.clone()`: returns a copy of the object
 
 ## VImageScoreMap
 
-import：
+import:
 
 ```python
 from vkit.label.type import VImageScoreMap
 ```
 
-`VImageScoreMap` 用于表示评分图：
+`VImageScoreMap` represents a score map：
 
 ```python
 @attr.define
@@ -191,18 +195,18 @@ class VImageScoreMap:
     mat: npt.NDArray
 ```
 
-其中：
+Explanation:
 
-* `mat`：`ndim = 2` 且 `dtype = np.float32`
+* `mat` fulfills `ndim = 2` and `dtype = np.float32`
 
-`VImageScoreMap` 的属性：
+Attributes of `VImageScoreMap`:
 
-* `height`：高，类型 `int`
-* `width`：宽，类型 `int`
-* `shape`：（高，宽），类型 `Tuple[int, int]`
+* `height`: type `int`
+* `width`: type `int`
+* `shape`: (height, width), type `Tuple[int, int]`
 
-`VImageScoreMap` 的方法：
+Methods available in `VImageScoreMap`：
 
-* `VImageScoreMap.from_image_mask(image_mask: VImageMask)`：从 `VImageMask` 转换生成
-* `VImageScoreMap.from_shape_and_polygon_value_pairs(height: int, width: int, polygon_value_pairs: Iterable[Tuple[VPolygon, float]])`：初始化（高，宽）的评分图，图中的多边形使用对应的评分赋值
-* `VImageScoreMap.from_image_and_polygon_value_pairs(image: VImage, polygon_value_pairs: Iterable[Tuple[VPolygon, float]])`：与 `VImageScoreMap.from_shape_and_polygon_value_pairs` 类似，只不过会采用 `image.shape`
+* `VImageScoreMap.from_image_mask(image_mask: VImageMask)`: converts from a `VImageMask` to a `VImageScoreMap`
+* `VImageScoreMap.from_shape_and_polygon_value_pairs(height: int, width: int, polygon_value_pairs: Iterable[Tuple[VPolygon, float]])`: initialise a `VImageScoreMap` with the provided height and width, the float value in the `Tuple[VPolygon, float]` will be used as the score
+* `VImageScoreMap.from_image_and_polygon_value_pairs(image: VImage, polygon_value_pairs: Iterable[Tuple[VPolygon, float]])`: similar to `VImageScoreMap.from_shape_and_polygon_value_pairs`, however `image.shape` will be used instead for the height and width
