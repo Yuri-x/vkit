@@ -1,14 +1,14 @@
-# 图像类型
+# Image Type
 
 ## VImageKind
 
-import：
+import:
 
 ```python
 from vkit.image.type import VImageKind
 ```
 
-`VImageKind` 用于标记 `VImage` 的图片类型：
+`VImageKind` can be used to tag the image type for an `VImage` object：
 
 ```python
 class VImageKind(Enum):
@@ -22,27 +22,27 @@ class VImageKind(Enum):
     NONE = auto()
 ```
 
-其中：
+Explanations:
 
-* `*_GCN`： 表示对应类型的的 GCN（Global Contrast Normalization）后的结果类型
-* `RGB`： 关联 `mat.ndim = 3`，`mat.dtype = np.uint8`
-* `RGB_GCN`： 关联 `mat.ndim = 3`，`mat.dtype = np.float32`
-* `RGBA`： 关联 `mat.ndim = 4`，`mat.dtype = np.uint8`
-* `HSV`： 关联 `mat.ndim = 3`，`mat.dtype = np.uint8`
-* `HSV_GCN`： 关联 `mat.ndim = 3`，`mat.dtype = np.float32`
-* `GRAYSCALE`： 关联 `mat.ndim = 2`，`mat.dtype = np.uint8`
-* `GRAYSCALE_GCN`： 关联 `mat.ndim = 2`，`mat.dtype = np.float32`
-* `NONE`： 仅在 `VImage` 初始化过程使用，在 `VImage`  没有显式传入 `kind` 时，vkit 会根据 `mat` 的 `ndim` 与 `dtype` 自动推导出 `kind`
+* `*_GCN`: represents the GCN (Global Contrast Normalization) resultant type from the corresponding image type
+* `RGB`: associates `mat.ndim = 3`, `mat.dtype = np.uint8`
+* `RGB_GCN`: associates `mat.ndim = 3`, `mat.dtype = np.float32`
+* `RGBA`: associates `mat.ndim = 4`, `mat.dtype = np.uint8`
+* `HSV`: associates `mat.ndim = 3`, `mat.dtype = np.uint8`
+* `HSV_GCN`: associates `mat.ndim = 3`, `mat.dtype = np.float32`
+* `GRAYSCALE`: associates `mat.ndim = 2`, `mat.dtype = np.uint8`
+* `GRAYSCALE_GCN`: associates `mat.ndim = 2`, `mat.dtype = np.float32`
+* `NONE`: Only used while initialising `VImage` . If `kind` was not explicitly passed into `VImage` constructor, vkit will infer the `kind` from `ndim` and `dtype` of `mat`
 
 ## VImage
 
-import：
+import:
 
 ```python
 from vkit.image.type import VImage
 ```
 
-`VImage` 是 vkit 封装的图像数据类型，支持 I/O、归一化、缩放等操作。`VImage` 的数据字段如下：
+`VImage` is the image data encapsulation provided by vkit. It supports I/O, normalisation, scaling and other common image manipulations. `VImage` has the following fields:
 
 ```python
 @attr.define
@@ -51,32 +51,32 @@ class VImage:
     kind: VImageKind = VImageKind.NONE
 ```
 
-其中：
+Explanations:
 
-* `mat`：是一个 numpy array，其 `ndim` 与 `dtype` 与 `kind`  关联，见上方
-* `kind`：用于标记 `mat`
+* `mat`: a numpy array, its `ndim` and `dtype` will be associated to `kind`. Refer to the above `VImageKind` section for detail
+* `kind`: tags the corresponding `mat`
 
-`VImage` 的属性：
+attributes of `VImage`:
 
-* `height`：高，类型 `int`
-* `width`：宽，类型 `int`
-* `shape`：（高，宽），类型 `Tuple[int, int]`
-* `num_channels`： 通道数，类型 `int`。如果类型属于 `GRAYSCALE`，`GRAYSCALE_GCN`，返回 `0`
+* `height`: type `int`
+* `width`: type `int`
+* `shape`: (height, width), type `Tuple[int, int]`
+* `num_channels`: number of channels, type `int`. If the `kind` field is either `GRAYSCALE` or `GRAYSCALE_GCN`, returns `0`
 
-`VImage` 的 I/O 方法：
+I/O methods available in `VImage`：
 
-* `VImageKind.from_file(path: PathType, disable_exif_orientation: bool = False)`：直接从图片文件路径实例化 `VImage`。默认 `disable_exif_orientation = False` 时，会从图片文件中解析 EXIF 元数据，执行相关旋转操作
-* `self.to_file(path: PathType, disable_to_rgb_image: bool = False)`：将 `VImage` 输出到文件。默认 `disable_to_rgb_image: bool = False` 时，会自动将图片转为 RGB 格式保存
-* `VImageKind.from_pil_image(pil_image: Image.Image)`：从 `PIL.Image` 实例化 `VImage`
-* `self.to_pil_image()`：将 `VImage` 转换为 `PIL.Image`
+* `VImageKind.from_file(path: PathType, disable_exif_orientation: bool = False)`: initialise a `VImage` object from an image file path. By default `disable_exif_orientation = False`, which instructs vkit to parse the EXIF metadata from the image file and perform image rotation accordingly
+* `self.to_file(path: PathType, disable_to_rgb_image: bool = False)`: export the `VImage` to a file. By default `disable_to_rgb_image: bool = False`, which saves the image using RGB image format
+* `VImageKind.from_pil_image(pil_image: Image.Image)`: instantiate a `VImage` object from an `PIL.Image` object
+* `self.to_pil_image()`: converts a `VImage` object to a `PIL.Image` object
 
-`VImage` 的转换方法：
+Conversion methods available in `VImage`:
 
-* `self.clone()`：复制 `VImage`
-* `self.to_grayscale_image()`：将 `VImage` 转为 `GRAYSCALE` 类型。如果 `self` 本身已经是 `GRAYSCALE` 类型，会返回一个 `clone` 实例
-* `self.to_rgb_image()`：将 `VImage` 转为 `RGB` 类型。如果 `self` 本身已经是 `RGB` 类型，会返回一个 `clone` 实例
-* `self.to_rgba_image()`：将 `VImage` 转为 `RGBA` 类型。如果 `self` 本身已经是 `RGBA` 类型，会返回一个 `clone` 实例
-* `self.to_hsv_image()`：将 `VImage` 转为 `HSV` 类型。如果 `self` 本身已经是 `HSV` 类型，会返回一个 `clone` 实例
-* `self.to_gcn_image(lamb=0, eps=1E-8, scale=1.0)`，对图片执行 GCN 操作，详情见 [此文](https://cedar.buffalo.edu/~srihari/CSE676/12.2%20Computer%20Vision.pdf)
-* `self.to_non_gcn_image()`：将图片转换为对应的非 GCN 类型，如 `RGB_GCN -> RGB`
-* `self.to_rescaled_image(self, height: int, width: int, cv_resize_interpolation: int = cv.INTER_CUBIC)`：缩放图片的高度与宽度
+* `self.clone()`: Creates a copy of the `VImage`
+* `self.to_grayscale_image()`: Converts the `VImage` into a `GRAYSCALE` image. If the `self` object is already of the `GRAYSCALE` type, returns a `clone` instance
+* `self.to_rgb_image()`: Converts the `VImage` into a `RGB` image. If the `self` object is already of the `RGB` type, returns a `clone` instance
+* `self.to_rgba_image()`: Converts the `VImage` into a `RGBA` image. If the `self` object is already of the `RGBA` type, returns a `clone` instance
+* `self.to_hsv_image()`: Converts the `VImage` into a `HSV` image. If the `self` object is already of the `HSV` type, returns a `clone` instance
+* `self.to_gcn_image(lamb=0, eps=1E-8, scale=1.0)`: perform GCN on the image, please refer to [this article](https://cedar.buffalo.edu/~srihari/CSE676/12.2%20Computer%20Vision.pdf) for detail
+* `self.to_non_gcn_image()`: Converts the image to non GCN type, for example converting `RGB_GCN -> RGB`
+* `self.to_rescaled_image(self, height: int, width: int, cv_resize_interpolation: int = cv.INTER_CUBIC)`: scales the height and/or width of the image
